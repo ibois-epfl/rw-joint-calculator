@@ -3,7 +3,7 @@ This repo contains (highly) experimental code to calculate the forces in a round
 <center>
 <img src="./assets/2025_05_29_joinery_detail_01_cropped.png" width="75%">
 
-*fig. 1: Roundwood joint as developed by [dr. Petras Vestartas](https://orcid.org/0000-0002-4428-1110)*
+*fig. 1: Roundwood joint as developed by @petrasvestartas*
 </center>
 
 > [!WARNING] The current implementation does not take the screw into account (or rather assumes a central screw that takes all the tensile stresses perfectly in it axis). When that is fixed this warning will be removed :)
