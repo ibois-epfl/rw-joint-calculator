@@ -59,9 +59,14 @@ class StressFieldComputer:
         brep_volume = Rhino.Geometry.Surface.CreateExtrusion(nurbs_curve, -100 * Rhino.Geometry.Vector3d(face.normal.x, face.normal.y, face.normal.z)).ToBrep()
         brep_volume.Transform(Rhino.Geometry.Transform.Translation(TOL * Rhino.Geometry.Vector3d(face.normal.x, face.normal.y, face.normal.z))) #Because otherwise the split fails...
         splitting_plane_x_axis = Rhino.Geometry.Vector3d(intersection_curves[0].PointAtStart - intersection_curves[0].PointAtEnd)
-        translated_split_face_center = split_face_center - Rhino.Geometry.Vector3d(face.normal.x/50, face.normal.y/50, face.normal.z/50)
-        splitting_plane_y_axis = Rhino.Geometry.Vector3d(intersection_curves[0].PointAtStart - translated_split_face_center)
+        splitting_plane_y_axis = Rhino.Geometry.Vector3d(intersection_curves[0].PointAtStart - split_face_center)
+        dot_product = Rhino.Geometry.Vector3d.CrossProduct(splitting_plane_y_axis, splitting_plane_x_axis) * Rhino.Geometry.Vector3d(face.normal.x, face.normal.y, face.normal.z)
+        print(dot_product)
         splitting_plane = Rhino.Geometry.Plane(intersection_curves[0].PointAtStart,splitting_plane_x_axis, splitting_plane_y_axis)
+        if dot_product > 0:
+            splitting_plane.Transform(Rhino.Geometry.Transform.Rotation(-math.pi/18, splitting_plane_x_axis, intersection_curves[0].PointAtStart))
+        else:
+            splitting_plane.Transform(Rhino.Geometry.Transform.Rotation(math.pi/18, splitting_plane_x_axis, intersection_curves[0].PointAtStart))
         splitting_brep = Rhino.Geometry.PlaneSurface(splitting_plane, interval, interval).ToBrep()
         candidate_volumes = brep_volume.Split(splitting_brep, TOL)
         capped_volumes = []
