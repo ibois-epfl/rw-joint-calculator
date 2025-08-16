@@ -9,10 +9,10 @@ import Rhino
 
 import math
 
-def volume_lambda_sorter(brep):
+def volume_lambda(brep):
     volume = abs(Rhino.Geometry.VolumeMassProperties.Compute(brep).Volume)
     return volume
-def surface_lambda_sorter(brep):
+def surface_lambda(brep):
     return Rhino.Geometry.AreaMassProperties.Compute(brep).Area
 
 TOL = Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance
@@ -25,18 +25,21 @@ class StressFieldComputer:
         self.moment = moment
         self.rotation_point = rotation_point
         self.joint = joint
-        self.stress_field = []
 
     def compute_stress_field(self):
         """
         The stress field along the faces is modelled as a truncated volume extruded from the face
         """
+        stress_volumes = []
         for face in self.joint.faces:
             # Compute the stress distribution on each face
-            stress_distribution = self.compute_face_stress(face)
-            self.stress_field.append(stress_distribution)
-
-    def compute_face_stress(self, face: face.JointFace):
+            stress_distribution = self.compute_face_unit_stresses(face)
+            stress_volume = volume_lambda(stress_distribution)
+            stress_volumes.append(stress_volume)
+        total_volume = sum(stress_volumes)
+        stress_volumes = [x / total_volume for x in stress_volumes]
+        self.joint.moment_weights = stress_volumes
+    def compute_face_unit_stresses(self, face: face.JointFace):
         """
         Compute the stress distribution on a single face based on the applied moment and rotation axis.
         """
@@ -73,11 +76,9 @@ class StressFieldComputer:
         for candidate in candidate_volumes:
             candidate = candidate.CapPlanarHoles(10*TOL)
             capped_volumes.append(candidate)
-        sorted_volumes = sorted(capped_volumes, key=volume_lambda_sorter, reverse=False)
-        Rhino.RhinoDoc.ActiveDoc.Objects.AddBrep(sorted_volumes[0])
+        sorted_volumes = sorted(capped_volumes, key=volume_lambda, reverse=False)
         centroid = Rhino.Geometry.AreaMassProperties.Compute(sorted_volumes[0]).Centroid
         resultant_axis_line = Rhino.Geometry.Line(centroid, centroid + Rhino.Geometry.Vector3d(face.normal.x, face.normal.y, face.normal.z))
         intersection_result, curves, points = Rhino.Geometry.Intersect.Intersection.CurveBrep(resultant_axis_line.ToNurbsCurve(), face.brep_surface, TOL)
         face.resultant_location = geometry.Vector(points[0].X, points[0].Y, points[0].Z)
-        Rhino.RhinoDoc.ActiveDoc.Objects.AddPoint(Rhino.Geometry.Point3d(points[0].X, points[0].Y, points[0].Z))
-        return sorted_volumes
+        return sorted_volumes[0]

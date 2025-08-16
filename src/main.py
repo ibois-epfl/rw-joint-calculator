@@ -22,7 +22,7 @@ for i, brep_face in enumerate(brep_faces):
 
     vectors.append(Rhino.Geometry.Vector3d(joint_face.normal.x/10, joint_face.normal.y/10, joint_face.normal.z/10))
 
-my_joint = joint.Joint(name="Joint1", faces=joint_faces)
+my_joint = joint.Joint(name="Joint1", faces=joint_faces, moment_weights=None)
 
 stress_computer = stress_field.StressFieldComputer(
     moment=geometry.Vector(moment_vector.X, moment_vector.Y, moment_vector.Z),
@@ -33,3 +33,5 @@ stress_computer.compute_stress_field()
 
 for face in my_joint.faces:
     anchors.append(Rhino.Geometry.Point3d(face.resultant_location.x, face.resultant_location.y, face.resultant_location.z))
+
+print(my_joint.moment_weights)
