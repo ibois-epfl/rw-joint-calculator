@@ -50,7 +50,7 @@ class StressFieldComputer:
         splitting_brep = Rhino.Geometry.PlaneSurface(splitting_plane, interval, interval).ToBrep()
         success, intersection_curves, intersection_points = Rhino.Geometry.Intersect.Intersection.BrepBrep(splitting_brep, face.brep_surface, TOL)
         split_faces = face.brep_surface.Split(splitting_brep, TOL)
-        sorted_split_faces = sorted(split_faces, key=surface_lambda_sorter, reverse=True)
+        sorted_split_faces = sorted(split_faces, key=surface_lambda, reverse=True)
         split_face = sorted_split_faces[0]
         split_face_center = Rhino.Geometry.AreaMassProperties.Compute(split_face).Centroid
 
