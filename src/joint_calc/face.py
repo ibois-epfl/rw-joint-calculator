@@ -4,7 +4,7 @@ This module contains the dataclass for joint faces
 
 from dataclasses import dataclass
 
-import geometry
+from joint_calc import geometry
 
 import Rhino
 
@@ -15,4 +15,6 @@ class JointFace:
     area: float
     normal: geometry.Vector
     brep_surface: Rhino.Geometry.Brep
-    resultant_location: geometry.Vector # The location of the resultant force vector that will be applied on this face
+    resultant_location: geometry.Point = None # The location of the resultant force vector that will be applied on this face
+    stress_distribution: Rhino.Geometry.Brep = None
+    max_stress: float = 0.0
