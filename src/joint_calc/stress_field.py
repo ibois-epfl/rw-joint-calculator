@@ -25,6 +25,7 @@ class StressFieldComputer:
         self.moment = moment
         self.rotation_point = rotation_point
         self.joint = joint
+        self.total_tensile_component = 0
 
     def compute_stress_field(self):
         """
@@ -45,6 +46,10 @@ class StressFieldComputer:
         for i, face in enumerate(self.joint.faces):
             moment_arm = face.resultant_location - self.rotation_point
             total_force_on_face = volume_lambda(face.stress_distribution)
+            force_angle = Rhino.Geometry.Vector3d.VectorAngle(self.moment.to_vector_3d(), face.normal.to_vector_3d())
+            if force_angle > math.pi / 2:
+                force_angle = math.pi - force_angle
+            tensile_component = total_force_on_face * math.cos(force_angle)
             raw_unit_moment = Rhino.Geometry.Vector3d.CrossProduct(moment_arm.to_vector_3d(), face.normal.to_vector_3d() * total_force_on_face)
             raw_unit_moment_angle = Rhino.Geometry.Vector3d.VectorAngle(raw_unit_moment, self.moment.to_vector_3d())
             moment_resisting_component = math.cos(raw_unit_moment_angle) * geometry.Vector.from_vector_3d(raw_unit_moment)
@@ -52,8 +57,12 @@ class StressFieldComputer:
             if actual_moment.norm() != 0:
                 amplification_factor = actual_moment.norm() / moment_resisting_component.norm()
                 face.max_stress = amplification_factor * unit_stresses[i]
+                tensile_component *= amplification_factor
+                self.total_tensile_component += tensile_component
             else:
                 raise ValueError("Actual moment is zero, which is not allowed.")
+
+        self.total_tensile_component /= 2  # because the tensile force is equally shared between the two beams (the screw only takes half on both ends)
 
     def compute_face_unit_stresses(self, face: face.JointFace):
         """
