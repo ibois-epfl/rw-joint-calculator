@@ -1,7 +1,8 @@
 from invoke import task
 import os
+import getpass
 
-from src.joint_calc.__init__ import __version__ as VERSION
+from src.python_library.joint_calc.__init__ import __version__ as VERSION
 
 PATH_COMPONENTS = "./src/components"
 PATH_COMPONENTIZER = "./componentizer/ghcomponentizer.py"
@@ -26,6 +27,10 @@ def ghcomponentizer(ctx):
 
 @task
 def install_lib(ctx):
-    user = os.getlogin()
-    python_path = f"C:\\Users\\{user}\\.rhinocode\\py39-rh8\\python.exe"
+    user = getpass.getuser()
+    os_name = os.name
+    if os_name == "nt":
+        python_path = f"C:\\Users\\{user}\\.rhinocode\\py39-rh8\\python.exe"
+    else:
+        python_path = f"/Users/{user}/.rhinocode/py39-rh8/python3.9"
     ctx.run(f'"{python_path}" -m pip install ./src/python_library')
