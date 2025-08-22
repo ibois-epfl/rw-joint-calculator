@@ -8,13 +8,13 @@ This repo contains (highly) experimental code to calculate the forces in a round
 
 </center>
 
-> [!WARNING] 
+> [!WARNING]
 > The current implementation does not take the screw into account (or rather assumes a central screw that takes all the tensile stresses perfectly in it axis). When that is fixed this warning will be removed :)
 
-> [!WARNING] 
+> [!WARNING]
 > The current implementation only calculates the stresse resulting from moments, not axial stresses.
 
-> [!WARNING] 
+> [!WARNING]
 > This repo has NOT been validated by mechanical tests, and the results might be very wrong, so do not use this for any other purpose than experimental research
 
 ## class diagram
