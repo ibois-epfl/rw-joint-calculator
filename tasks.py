@@ -1,5 +1,6 @@
 from invoke import task
-import os, getpass
+import os
+import getpass
 
 from src.python_library.joint_calc.__init__ import __version__ as VERSION
 
