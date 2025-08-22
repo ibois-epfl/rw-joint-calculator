@@ -28,4 +28,4 @@ def ghcomponentizer(ctx):
 def install_lib(ctx):
     user = os.getlogin()
     python_path = f"C:\\Users\\{user}\\.rhinocode\\py39-rh8\\python.exe"
-    ctx.run(f'"{python_path}" -m pip install ./src')
+    ctx.run(f'"{python_path}" -m pip install ./src/python_library')
