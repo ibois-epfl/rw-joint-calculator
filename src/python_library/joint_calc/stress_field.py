@@ -42,7 +42,7 @@ class StressFieldComputer:
         unit_stresses = []
         for joint_face in self.joint.faces:
             # Compute the stress distribution on each face
-            stress_distribution, max_unit_stress = self.compute_face_unit_stresses(
+            stress_distribution, max_unit_stress = self.__compute_face_unit_stresses(
                 joint_face
             )
             stress_volumes.append(volume_lambda(joint_face.stress_distribution))
@@ -83,7 +83,7 @@ class StressFieldComputer:
 
         self.total_tensile_component /= 2  # because the tensile force is equally shared between the two beams (the screw only takes half on both ends)
 
-    def compute_face_unit_stresses(self, joint_face: face.JointFace):
+    def __compute_face_unit_stresses(self, joint_face: face.JointFace):
         """
         Compute the stress distribution on a single face based on the applied moment and rotation axis.
         This is done by creating a Rhino.Geometry.Brep volume that represents the stress distribution resulting from a 1 degree rotation around the rotation axis.
