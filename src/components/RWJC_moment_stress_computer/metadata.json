@@ -1,0 +1,88 @@
+{
+    "name": "RWJC_moment_calculator",
+    "nickname": "RWJC_moment_calculator",
+    "category": "rw-jc",
+    "subcategory": "stress_computation",
+    "description": "computes the stresses in a roundwood joint created by a moment",
+    "exposure": 4,
+    "instanceGuid": "faea6780-9c67-4a4e-9de2-64e27edce90a",
+    "ghpython": {
+        "hideOutput": true,
+        "hideInput": true,
+        "isAdvancedMode": true,
+        "marshalOutGuids": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "brep_faces",
+                "nickname": "brep_faces",
+                "description": "The brep faces of the joint",
+                "optional": false,
+                "allowTreeAccess": true,
+                "showTypeHints": true,
+                "scriptParamAccess": "list",
+                "wireDisplay": "default",
+                "sourceCount": 0,
+                "typeHintID": "brep"
+            },
+            {
+                "name": "moment_vector",
+                "nickname": "moment_vector",
+                "description": "The moment vector applied to the joint.",
+                "optional": false,
+                "allowTreeAccess": true,
+                "showTypeHints": true,
+                "scriptParamAccess": "item",
+                "wireDisplay": "default",
+                "sourceCount": 0,
+                "typeHintID": "vector"
+            },
+            {
+                "name": "rotation_center",
+                "nickname": "rotation_center",
+                "description": "The point around which the moment vector is applied.",
+                "optional": false,
+                "allowTreeAccess": true,
+                "showTypeHints": true,
+                "scriptParamAccess": "item",
+                "wireDisplay": "default",
+                "sourceCount": 0,
+                "typeHintID": "float"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "resultant_vectors",
+                "nickname": "resultant_vectors",
+                "description": "The resultant forces on the joint faces.",
+                "optional": false,
+                "sourceCount": 0,
+                "graft": false
+            },
+            {
+                "name": "anchors",
+                "nickname": "anchors",
+                "description": "The anchor points for the resultant forces.",
+                "optional": false,
+                "sourceCount": 0,
+                "graft": false
+            },
+            {
+                "name": "stress_distribution",
+                "nickname": "stress_distribution",
+                "description": "The stress distribution on the joint faces.",
+                "optional": false,
+                "sourceCount": 0,
+                "graft": false
+            },
+            {
+                "name": "sigma_maxs",
+                "nickname": "sigma_maxs",
+                "description": "The maximum stress values on the respective joint faces.",
+                "optional": false,
+                "sourceCount": 0,
+                "graft": false
+            }
+        ]
+    }
+}
