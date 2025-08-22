@@ -1,11 +1,10 @@
 # rw-joint-calculator
 This repo contains (highly) experimental code to calculate the forces in a roundwood joint such as this one:
 
+
 <center>
 <img src="./assets/2025_08_22_joinery_detail_and_stresses.png" width="75%">
 
-
-</center>
 
 > [!WARNING]
 > The current implementation does not take the screw into account (or rather assumes a central screw that takes all the tensile stresses perfectly in it axis). When that is fixed this warning will be removed :)
