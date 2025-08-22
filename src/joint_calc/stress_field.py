@@ -67,6 +67,7 @@ class StressFieldComputer:
     def compute_face_unit_stresses(self, face: face.JointFace):
         """
         Compute the stress distribution on a single face based on the applied moment and rotation axis.
+        This is done by creating a Rhino.Geometry.Brep volume that represents the stress distribution resulting from a 1 degree rotation around the rotation axis.
 
         :param face: The face to compute the stress distribution for.
         :type face: face.JointFace
@@ -101,9 +102,9 @@ class StressFieldComputer:
         dot_product = Rhino.Geometry.Vector3d.CrossProduct(splitting_plane_y_axis, splitting_plane_x_axis) * face.normal.to_vector_3d()
         splitting_plane = Rhino.Geometry.Plane(intersection_curves[0].PointAtStart,splitting_plane_x_axis, splitting_plane_y_axis)
         if dot_product > 0:
-            splitting_plane.Transform(Rhino.Geometry.Transform.Rotation(-math.pi/18, splitting_plane_x_axis, intersection_curves[0].PointAtStart))
+            splitting_plane.Transform(Rhino.Geometry.Transform.Rotation(-math.pi/180, splitting_plane_x_axis, intersection_curves[0].PointAtStart))
         else:
-            splitting_plane.Transform(Rhino.Geometry.Transform.Rotation(math.pi/18, splitting_plane_x_axis, intersection_curves[0].PointAtStart))
+            splitting_plane.Transform(Rhino.Geometry.Transform.Rotation(math.pi/180, splitting_plane_x_axis, intersection_curves[0].PointAtStart))
         splitting_brep = Rhino.Geometry.PlaneSurface(splitting_plane, interval, interval).ToBrep()
         candidate_volumes = brep_volume.Split(splitting_brep, TOL)
         
