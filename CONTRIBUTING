@@ -1,0 +1,29 @@
+# Contributing
+
+First, thanks for taking interest in our work!
+
+You can contribute to this code by:
+* creating issues
+* writing/fixing code
+
+## Issues
+GitHub repositories have an `Issues` tab where you can describe an issue you are encountering. Feel free to create issues there, by describing the context (you OS, Rhino version...), the exact issue (if an error message is available, please copy-paste it) and if possible some test file to reproduce the issue.
+
+## Code
+To contribute to this code, clone the repository, create and checkout to a new branch:
+```bash
+git branch <feature/my_feature_name> #Or <fix/my_fix_name> if you want to contribute to a fix
+```
+Then create the environment (here we use conda) and enable pre-commit:
+```bash
+conda env create -f ./environment.yml
+pre-commit install
+```
+🎆 You can now code your contribution! 🎆
+
+Once you have done your magic, you can push to the remote repository:
+
+```bash
+git push --set-upstream origin <feature/my_feature_name>
+```
+You are now ready to create a Pull Request (PR). In this PR you must describe the changes you are making. The check(s) must also pass. While your work is in progress, convert the PR to `draft`, and once you are happy, convert it back to `ready for review`. Once the code has been aproved by the repo's manager, (s)he will merge it and buy you a beer (if practically feasible ;) )
