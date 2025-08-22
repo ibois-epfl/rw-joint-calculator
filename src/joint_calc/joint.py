@@ -6,8 +6,9 @@ from dataclasses import dataclass
 
 import face
 
+
 @dataclass
 class Joint:
     name: str
     faces: list[face.JointFace]
-    moment_weights: list[float] # How much this face contributes to the overall moment
+    moment_weights: list[float]  # How much this face contributes to the overall moment

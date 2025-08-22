@@ -1,21 +1,25 @@
 """
 This module contains functions for generating and manipulating stress-strain curves.
 """
+
 import enum
+
 
 class ElasticStressStrainCurveType(enum.Enum):
     """
     Enum for different types of stress-strain curves.
     """
-    C18_ELASTIC_TRANS = 300 #MPa
-    C24_ELASTIC_TRANS = 370 #MPa
-    D30_ELASTIC_TRANS = 640 #MPa
+
+    C18_ELASTIC_TRANS = 300  # MPa
+    C24_ELASTIC_TRANS = 370  # MPa
+    D30_ELASTIC_TRANS = 640  # MPa
+
 
 class StressStrainCurveType:
-    def __init__(self, elastic: bool,
-                 curve_type: ElasticStressStrainCurveType):
+    def __init__(self, elastic: bool, curve_type: ElasticStressStrainCurveType):
         self.elastic = elastic
         self.curve_type = curve_type
+
 
 class StressStrainCurve:
     def __init__(self, curve_type: StressStrainCurveType):

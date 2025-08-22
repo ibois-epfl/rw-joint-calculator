@@ -8,6 +8,7 @@ import math
 
 import Rhino
 
+
 @dataclass
 class Vector:
     x: float
@@ -29,12 +30,12 @@ class Vector:
     def __rmul__(self, other: float):
         return self.__mul__(other)
 
-    def __add__(self, other: 'Vector'):
+    def __add__(self, other: "Vector"):
         if isinstance(other, Vector):
             return Vector(self.x + other.x, self.y + other.y, self.z + other.z)
         return NotImplemented
 
-    def __sub__(self, other: 'Vector'):
+    def __sub__(self, other: "Vector"):
         if isinstance(other, Vector):
             return Vector(self.x - other.x, self.y - other.y, self.z - other.z)
         return NotImplemented
@@ -42,7 +43,7 @@ class Vector:
     def norm(self):
         return math.sqrt(self.x**2 + self.y**2 + self.z**2)
 
-    def compute_angle_with(self, other: 'Vector'):
+    def compute_angle_with(self, other: "Vector"):
         if not isinstance(other, Vector):
             return NotImplemented
         dot_product = self.x * other.x + self.y * other.y + self.z * other.z
@@ -53,8 +54,8 @@ class Vector:
 
         value = max(-1.0, min(1.0, dot_product / norms))
         return math.acos(value)
-    
-    def is_parallel_to(self, other: 'Vector', tolerance: float = 1e-6):
+
+    def is_parallel_to(self, other: "Vector", tolerance: float = 1e-6):
         if not isinstance(other, Vector):
             return NotImplemented
         angle = self.compute_angle_with(other)
@@ -69,8 +70,8 @@ class Point:
 
     def to_point_3d(self):
         return Rhino.Geometry.Point3d(self.x, self.y, self.z)
-    
-    def __sub__(self, other: 'Point'):
+
+    def __sub__(self, other: "Point"):
         if isinstance(other, Point):
             return Vector(self.x - other.x, self.y - other.y, self.z - other.z)
         elif isinstance(other, Vector):
