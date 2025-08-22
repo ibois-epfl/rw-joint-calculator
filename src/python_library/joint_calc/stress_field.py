@@ -106,19 +106,55 @@ class StressFieldComputer:
         splitting_brep = Rhino.Geometry.PlaneSurface(
             splitting_plane, interval, interval
         ).ToBrep()
+        scaled_brep_vertices = [pt.Location for pt in joint_face.brep_surface.Vertices]
+        mean_pt = Rhino.Geometry.Point3d(0, 0, 0)
+        for pt in scaled_brep_vertices:
+            mean_pt += pt
+        mean_pt /= len(scaled_brep_vertices)
+        (is_on_face, crv, pts) = Rhino.Geometry.Intersect.Intersection.BrepBrep(
+            splitting_brep, joint_face.brep_surface, TOL
+        )
+        scaled_brep_face = joint_face.brep_surface.DuplicateBrep()
+        scaled_brep_face.Transform(Rhino.Geometry.Transform.Scale(mean_pt, 3.0))
         (
             success,
             intersection_curves,
             intersection_points,
         ) = Rhino.Geometry.Intersect.Intersection.BrepBrep(
-            splitting_brep, joint_face.brep_surface, TOL
+            splitting_brep, scaled_brep_face, TOL
         )
-        split_faces = joint_face.brep_surface.Split(splitting_brep, TOL)
-        sorted_split_faces = sorted(split_faces, key=surface_lambda, reverse=True)
-        split_face = sorted_split_faces[0]
-        split_face_center = Rhino.Geometry.AreaMassProperties.Compute(
-            split_face
+        initial_face_center = Rhino.Geometry.AreaMassProperties.Compute(
+            joint_face.brep_surface
         ).Centroid
+        split_faces = (
+            joint_face.brep_surface.Split(splitting_brep, TOL)
+            if len(crv) > 0
+            else [joint_face.brep_surface]
+        )
+        split_face = None
+        if len(split_faces) > 1:
+            for candidate in split_faces:
+                candidate_center = Rhino.Geometry.AreaMassProperties.Compute(
+                    candidate
+                ).Centroid
+                cross_product = Rhino.Geometry.Vector3d.CrossProduct(
+                    candidate_center - initial_face_center,
+                    initial_face_center - self.rotation_point.to_point_3d(),
+                )
+                dot = cross_product * joint_face.normal.to_vector_3d()
+                print(f"Dot product: {dot}")
+                if dot < 0:
+                    split_face = candidate
+                    split_face_center = candidate_center
+                    break
+        else:
+            split_face = split_faces[0]
+            split_face_center = Rhino.Geometry.AreaMassProperties.Compute(
+                split_face
+            ).Centroid
+        # split_face_center = Rhino.Geometry.AreaMassProperties.Compute(
+        #     split_face
+        # ).Centroid
 
         lines = []
         for edge in split_face.Edges:
@@ -131,7 +167,9 @@ class StressFieldComputer:
             nurbs_curve, -100 * joint_face.normal.to_vector_3d()
         ).ToBrep()
         brep_volume.Transform(
-            Rhino.Geometry.Transform.Translation(TOL * joint_face.normal.to_vector_3d())
+            Rhino.Geometry.Transform.Translation(
+                2 * TOL * joint_face.normal.to_vector_3d()
+            )
         )  # Because otherwise the split fails...
         splitting_plane_x_axis = Rhino.Geometry.Vector3d(
             intersection_curves[0].PointAtStart - intersection_curves[0].PointAtEnd
@@ -175,6 +213,7 @@ class StressFieldComputer:
         capped_volumes = []
         for candidate in candidate_volumes:
             candidate = candidate.CapPlanarHoles(10 * TOL)
+            # Rhino.RhinoDoc.ActiveDoc.Objects.AddBrep(candidate)
             capped_volumes.append(candidate)
 
         stress_distribution = sorted(capped_volumes, key=volume_lambda, reverse=False)[
