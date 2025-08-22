@@ -21,6 +21,14 @@ pre-commit install
 ```
 🎆 You can now code your contribution! 🎆
 
+To test your fixes/imporvements in grasshopper, re-install the python package and create a new set of component by running from the root repository:
+
+```bash
+invoke install-lib
+invoke ghcomponentizer
+```
+The new components will be located in `./src/build/latest_compiled_components`
+
 Once you have done your magic, you can push to the remote repository:
 
 ```bash
