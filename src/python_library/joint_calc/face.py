@@ -23,6 +23,7 @@ class JointFace:
 
     def __post_init__(self):
         self.__detect_main_axis()
+        self.normal = self.normal / self.normal.norm()  # Just to make sure
 
     def __detect_main_axis(self):
         """
@@ -32,15 +33,22 @@ class JointFace:
             geometry.Vector.from_vector_3d(edge.PointAtEnd - edge.PointAtStart)
             for edge in self.brep_surface.Edges
         ]
-        for first_candidate_edge_vector in edges:
+        for i, first_candidate_edge_vector in enumerate(edges):
+            first_candidate_edge_vector = (
+                first_candidate_edge_vector / first_candidate_edge_vector.norm()
+            )
             if first_candidate_edge_vector.z > 0:
-                first_candidate_edge_vector = first_candidate_edge_vector * -1
-            for second_candidate_edge_vector in edges:
+                first_candidate_edge_vector = -1 * first_candidate_edge_vector
+            for j in range(i + 1, len(edges)):
+                second_candidate_edge_vector = edges[j]
+                second_candidate_edge_vector = (
+                    second_candidate_edge_vector / second_candidate_edge_vector.norm()
+                )
                 if second_candidate_edge_vector.z > 0:
-                    second_candidate_edge_vector = second_candidate_edge_vector * -1
+                    second_candidate_edge_vector = -1 * second_candidate_edge_vector
                 # Check if the two candidate vectors are orthogonal
                 if first_candidate_edge_vector.is_parallel_to(
-                    second_candidate_edge_vector, 0.1
+                    second_candidate_edge_vector, 0.01
                 ):
                     self.main_axis = (
                         first_candidate_edge_vector / first_candidate_edge_vector.norm()
