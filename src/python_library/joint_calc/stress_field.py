@@ -69,7 +69,6 @@ class StressFieldComputer:
 
         unit_resisting_moment = raw_unit_moment * self.moment.to_vector_3d().Unitize()
         amplification_factor = self.moment.norm() / unit_resisting_moment.Length
-        print(f"Amplification factor: {amplification_factor}")
         for i, joint_face in enumerate(self.joint.faces):
             joint_face.max_stress = amplification_factor * unit_stresses[i]
             force_angle = Rhino.Geometry.Vector3d.VectorAngle(
