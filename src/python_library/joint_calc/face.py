@@ -42,5 +42,7 @@ class JointFace:
                 if first_candidate_edge_vector.is_parallel_to(
                     second_candidate_edge_vector, 0.1
                 ):
-                    self.main_axis = first_candidate_edge_vector
+                    self.main_axis = (
+                        first_candidate_edge_vector / first_candidate_edge_vector.norm()
+                    )
                     return
