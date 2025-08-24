@@ -43,7 +43,7 @@ class StressFieldComputer:
         raw_unit_moment = Rhino.Geometry.Vector3d(0, 0, 0)
         for joint_face in self.joint.faces:
             # Compute the stress distribution on each face
-            max_unit_stress = self.__compute_face_unit_stresses(joint_face)
+            max_unit_stress = self.__compute_moment_unit_stresses(joint_face)
             stress_volumes.append(volume_lambda(joint_face.stress_distribution))
             unit_stresses.append(max_unit_stress)
         total_volume = sum(stress_volumes)
@@ -52,15 +52,12 @@ class StressFieldComputer:
         for i, joint_face in enumerate(self.joint.faces):
             moment_arm = joint_face.resultant_location - self.rotation_point
             total_unit_force_on_face = volume_lambda(joint_face.stress_distribution)
-            force_angle = Rhino.Geometry.Vector3d.VectorAngle(
-                self.moment.to_vector_3d(), joint_face.normal.to_vector_3d()
-            )
+            force_angle = self.moment.compute_angle_with(joint_face.normal)
             if force_angle > math.pi / 2:
                 force_angle = math.pi - force_angle
             tensile_component = total_unit_force_on_face * math.cos(force_angle)
-            cross_product = Rhino.Geometry.Vector3d.CrossProduct(
-                moment_arm.to_vector_3d(),
-                joint_face.normal.to_vector_3d() * total_unit_force_on_face,
+            cross_product = moment_arm.to_vector_3d().cross(
+                joint_face.normal.to_vector_3d() * total_unit_force_on_face
             )
             # all faces must participate in the same direction:
             if cross_product * self.moment.to_vector_3d() < 0:
@@ -71,9 +68,7 @@ class StressFieldComputer:
         amplification_factor = self.moment.norm() / unit_resisting_moment.Length
         for i, joint_face in enumerate(self.joint.faces):
             joint_face.max_stress = amplification_factor * unit_stresses[i]
-            force_angle = Rhino.Geometry.Vector3d.VectorAngle(
-                self.moment.to_vector_3d(), joint_face.normal.to_vector_3d()
-            )
+            force_angle = self.moment.compute_angle_with(joint_face.normal)
             if force_angle > math.pi / 2:
                 force_angle = math.pi - force_angle
             tensile_component = (
@@ -85,7 +80,7 @@ class StressFieldComputer:
 
         self.total_tensile_component /= 2  # because the tensile force is equally shared between the two beams (the screw only takes half on both ends)
 
-    def __compute_face_unit_stresses(self, joint_face: face.JointFace):
+    def __compute_moment_unit_stresses(self, joint_face: face.JointFace):
         """
         Compute the stress distribution on a single face based on the applied moment and rotation axis.
         This is done by creating a Rhino.Geometry.Brep volume that represents the stress distribution resulting from a 10 degree rotation around the rotation axis.

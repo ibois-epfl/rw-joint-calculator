@@ -43,6 +43,20 @@ class Vector:
     def norm(self):
         return math.sqrt(self.x**2 + self.y**2 + self.z**2)
 
+    def dot(self, other: "Vector"):
+        if not isinstance(other, Vector):
+            return NotImplemented
+        return self.x * other.x + self.y * other.y + self.z * other.z
+
+    def cross(self, other: "Vector"):
+        if not isinstance(other, Vector):
+            return NotImplemented
+        return Vector(
+            self.y * other.z - self.z * other.y,
+            self.z * other.x - self.x * other.z,
+            self.x * other.y - self.y * other.x,
+        )
+
     def compute_angle_with(self, other: "Vector"):
         if not isinstance(other, Vector):
             return NotImplemented
@@ -60,6 +74,15 @@ class Vector:
             return NotImplemented
         angle = self.compute_angle_with(other)
         return abs(angle) < tolerance or abs(angle - math.pi) < tolerance
+
+    def project_in_plane(self, normal: "Vector"):
+        """Project the vector onto a plane defined by a normal vector."""
+        if not isinstance(normal, Vector):
+            return NotImplemented
+        if normal.norm() == 0:
+            raise ValueError("Normal vector cannot be null.")
+        normal = normal / normal.norm()
+        return self - normal * self.dot(normal)
 
 
 @dataclass
