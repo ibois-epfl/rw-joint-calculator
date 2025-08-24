@@ -40,6 +40,11 @@ class Vector:
             return Vector(self.x - other.x, self.y - other.y, self.z - other.z)
         return NotImplemented
 
+    def __truediv__(self, other: float):
+        if isinstance(other, (int, float)):
+            return Vector(self.x / other, self.y / other, self.z / other)
+        return NotImplemented
+
     def norm(self):
         return math.sqrt(self.x**2 + self.y**2 + self.z**2)
 
@@ -83,6 +88,14 @@ class Vector:
             raise ValueError("Normal vector cannot be null.")
         normal = normal / normal.norm()
         return self - normal * self.dot(normal)
+
+    def project_along(self, other: "Vector"):
+        if not isinstance(other, Vector):
+            return NotImplemented
+        if other.norm() == 0:
+            raise ValueError("Other vector cannot be null.")
+        other = other / other.norm()
+        return other * self.dot(other)
 
 
 @dataclass
