@@ -33,10 +33,10 @@ class JointFace:
             for edge in self.brep_surface.Edges
         ]
         for first_candidate_edge_vector in edges:
-            if first_candidate_edge_vector.z < 0:
+            if first_candidate_edge_vector.z > 0:
                 first_candidate_edge_vector = first_candidate_edge_vector * -1
             for second_candidate_edge_vector in edges:
-                if second_candidate_edge_vector.z < 0:
+                if second_candidate_edge_vector.z > 0:
                     second_candidate_edge_vector = second_candidate_edge_vector * -1
                 # Check if the two candidate vectors are orthogonal
                 if first_candidate_edge_vector.is_parallel_to(
