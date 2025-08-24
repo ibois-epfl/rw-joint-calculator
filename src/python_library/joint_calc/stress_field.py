@@ -40,59 +40,58 @@ class StressFieldComputer:
         """
         stress_volumes = []
         unit_stresses = []
+        raw_unit_moment = Rhino.Geometry.Vector3d(0, 0, 0)
         for joint_face in self.joint.faces:
             # Compute the stress distribution on each face
-            stress_distribution, max_unit_stress = self.__compute_face_unit_stresses(
-                joint_face
-            )
+            max_unit_stress = self.__compute_face_unit_stresses(joint_face)
             stress_volumes.append(volume_lambda(joint_face.stress_distribution))
             unit_stresses.append(max_unit_stress)
         total_volume = sum(stress_volumes)
-        stress_volumes = [x / total_volume for x in stress_volumes]
-        self.joint.moment_weights = stress_volumes
+        self.joint.moment_weights = [x / total_volume for x in stress_volumes]
 
         for i, joint_face in enumerate(self.joint.faces):
             moment_arm = joint_face.resultant_location - self.rotation_point
-            total_force_on_face = volume_lambda(joint_face.stress_distribution)
+            total_unit_force_on_face = volume_lambda(joint_face.stress_distribution)
             force_angle = Rhino.Geometry.Vector3d.VectorAngle(
                 self.moment.to_vector_3d(), joint_face.normal.to_vector_3d()
             )
             if force_angle > math.pi / 2:
                 force_angle = math.pi - force_angle
-            tensile_component = total_force_on_face * math.cos(force_angle)
-            raw_unit_moment = Rhino.Geometry.Vector3d.CrossProduct(
+            tensile_component = total_unit_force_on_face * math.cos(force_angle)
+            cross_product = Rhino.Geometry.Vector3d.CrossProduct(
                 moment_arm.to_vector_3d(),
-                joint_face.normal.to_vector_3d() * total_force_on_face,
+                joint_face.normal.to_vector_3d() * total_unit_force_on_face,
             )
-            raw_unit_moment_angle = Rhino.Geometry.Vector3d.VectorAngle(
-                raw_unit_moment, self.moment.to_vector_3d()
+            # all faces must participate in the same direction:
+            if cross_product * self.moment.to_vector_3d() < 0:
+                cross_product = -cross_product
+            raw_unit_moment += cross_product
+
+        unit_resisting_moment = raw_unit_moment * self.moment.to_vector_3d().Unitize()
+        amplification_factor = self.moment.norm() / unit_resisting_moment.Length
+        for i, joint_face in enumerate(self.joint.faces):
+            joint_face.max_stress = amplification_factor * unit_stresses[i]
+            force_angle = Rhino.Geometry.Vector3d.VectorAngle(
+                self.moment.to_vector_3d(), joint_face.normal.to_vector_3d()
             )
-            moment_resisting_component = math.cos(
-                raw_unit_moment_angle
-            ) * geometry.Vector.from_vector_3d(raw_unit_moment)
-            actual_moment = self.moment * self.joint.moment_weights[i]
-            if actual_moment.norm() != 0:
-                amplification_factor = (
-                    actual_moment.norm() / moment_resisting_component.norm()
-                )
-                joint_face.max_stress = amplification_factor * unit_stresses[i]
-                tensile_component *= amplification_factor
-                self.total_tensile_component += tensile_component
-            else:
-                raise ValueError("Actual moment is zero, which is not allowed.")
+            if force_angle > math.pi / 2:
+                force_angle = math.pi - force_angle
+            tensile_component = (
+                volume_lambda(joint_face.stress_distribution)
+                * math.cos(force_angle)
+                * amplification_factor
+            )
+            self.total_tensile_component += tensile_component
 
         self.total_tensile_component /= 2  # because the tensile force is equally shared between the two beams (the screw only takes half on both ends)
 
     def __compute_face_unit_stresses(self, joint_face: face.JointFace):
         """
         Compute the stress distribution on a single face based on the applied moment and rotation axis.
-        This is done by creating a Rhino.Geometry.Brep volume that represents the stress distribution resulting from a 1 degree rotation around the rotation axis.
+        This is done by creating a Rhino.Geometry.Brep volume that represents the stress distribution resulting from a 10 degree rotation around the rotation axis.
 
         :param face: The face to compute the stress distribution for.
         :type face: face.JointFace
-
-        :return stress_distribution: The stress distribution on the face, without scale.
-        :rtype: Rhino.Geometry.Brep
 
         :return max_unit_stress: The maximum unit stress on the face.
         :rtype: float
@@ -106,19 +105,51 @@ class StressFieldComputer:
         splitting_brep = Rhino.Geometry.PlaneSurface(
             splitting_plane, interval, interval
         ).ToBrep()
+        scaled_brep_vertices = [pt.Location for pt in joint_face.brep_surface.Vertices]
+        mean_pt = Rhino.Geometry.Point3d(0, 0, 0)
+        for pt in scaled_brep_vertices:
+            mean_pt += pt
+        mean_pt /= len(scaled_brep_vertices)
+        (is_on_face, crv, pts) = Rhino.Geometry.Intersect.Intersection.BrepBrep(
+            splitting_brep, joint_face.brep_surface, TOL
+        )
+        scaled_brep_face = joint_face.brep_surface.DuplicateBrep()
+        scaled_brep_face.Transform(Rhino.Geometry.Transform.Scale(mean_pt, 3.0))
         (
             success,
             intersection_curves,
             intersection_points,
         ) = Rhino.Geometry.Intersect.Intersection.BrepBrep(
-            splitting_brep, joint_face.brep_surface, TOL
+            splitting_brep, scaled_brep_face, TOL
         )
-        split_faces = joint_face.brep_surface.Split(splitting_brep, TOL)
-        sorted_split_faces = sorted(split_faces, key=surface_lambda, reverse=True)
-        split_face = sorted_split_faces[0]
-        split_face_center = Rhino.Geometry.AreaMassProperties.Compute(
-            split_face
+        initial_face_center = Rhino.Geometry.AreaMassProperties.Compute(
+            joint_face.brep_surface
         ).Centroid
+        split_faces = (
+            joint_face.brep_surface.Split(splitting_brep, TOL)
+            if len(crv) > 0
+            else [joint_face.brep_surface]
+        )
+        split_face = None
+        if len(split_faces) > 1:
+            for candidate in split_faces:
+                candidate_center = Rhino.Geometry.AreaMassProperties.Compute(
+                    candidate
+                ).Centroid
+                cross_product = Rhino.Geometry.Vector3d.CrossProduct(
+                    candidate_center - initial_face_center,
+                    initial_face_center - self.rotation_point.to_point_3d(),
+                )
+                dot = cross_product * joint_face.normal.to_vector_3d()
+                if dot < 0:
+                    split_face = candidate
+                    split_face_center = candidate_center
+                    break
+        else:
+            split_face = split_faces[0]
+            split_face_center = Rhino.Geometry.AreaMassProperties.Compute(
+                split_face
+            ).Centroid
 
         lines = []
         for edge in split_face.Edges:
@@ -131,7 +162,9 @@ class StressFieldComputer:
             nurbs_curve, -100 * joint_face.normal.to_vector_3d()
         ).ToBrep()
         brep_volume.Transform(
-            Rhino.Geometry.Transform.Translation(TOL * joint_face.normal.to_vector_3d())
+            Rhino.Geometry.Transform.Translation(
+                2 * TOL * joint_face.normal.to_vector_3d()
+            )
         )  # Because otherwise the split fails...
         splitting_plane_x_axis = Rhino.Geometry.Vector3d(
             intersection_curves[0].PointAtStart - intersection_curves[0].PointAtEnd
@@ -208,4 +241,4 @@ class StressFieldComputer:
             points[0].X, points[0].Y, points[0].Z
         )
         joint_face.stress_distribution = stress_distribution
-        return stress_distribution, max_unit_stress
+        return max_unit_stress

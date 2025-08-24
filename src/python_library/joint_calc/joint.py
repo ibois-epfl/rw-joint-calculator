@@ -4,7 +4,7 @@ This is a module to store joints with their faces
 
 from dataclasses import dataclass
 
-import face
+from joint_calc import face
 
 
 @dataclass
