@@ -97,12 +97,22 @@ class Vector:
         other = other / other.norm()
         return other * self.dot(other)
 
+    def normalized(self):
+        norm = self.norm()
+        if norm == 0:
+            raise ValueError("Cannot normalize zero-length vector.")
+        return self / norm
+
 
 @dataclass
 class Point:
     x: float
     y: float
     z: float
+
+    @staticmethod
+    def from_point_3d(point_3d: Rhino.Geometry.Point3d):
+        return Point(point_3d.X, point_3d.Y, point_3d.Z)
 
     def to_point_3d(self):
         return Rhino.Geometry.Point3d(self.x, self.y, self.z)
@@ -113,3 +123,40 @@ class Point:
         elif isinstance(other, Vector):
             return Point(self.x - other.x, self.y - other.y, self.z - other.z)
         return NotImplemented
+
+    def __add__(self, other: Vector):
+        if not isinstance(other, Vector):
+            return NotImplemented
+        return Point(self.x + other.x, self.y + other.y, self.z + other.z)
+
+
+@dataclass
+class Plane:
+    origin: Point
+    x_axis: Vector
+    y_axis: Vector
+
+    def __post_init__(self):
+        self.x_axis = self.x_axis / self.x_axis.norm()
+        self.y_axis = self.y_axis / self.y_axis.norm()
+        self.z_axis = self.x_axis.cross(self.y_axis)
+
+    @staticmethod
+    def from_rhino_plane(plane: Rhino.Geometry.Plane):
+        origin = Point.from_point_3d(plane.Origin)
+        x_axis = Vector.from_vector_3d(plane.XAxis)
+        y_axis = Vector.from_vector_3d(plane.YAxis)
+        return Plane(origin, x_axis, y_axis)
+
+    def to_rhino_plane(self):
+        return Rhino.Geometry.Plane(
+            self.origin.to_point_3d(),
+            self.x_axis.to_vector_3d(),
+            self.y_axis.to_vector_3d(),
+        )
+
+    def translate(self, translation: Vector):
+        if not isinstance(translation, Vector):
+            return NotImplemented
+        self.origin += translation
+        return self
