@@ -201,35 +201,13 @@ class StressFieldComputer:
                     intersection_curves[0].PointAtStart,
                 )
             )
-        splitting_brep = Rhino.Geometry.PlaneSurface(
-            splitting_plane, interval, interval
-        ).ToBrep()
-        candidate_volumes = brep_volume.Split(splitting_brep, TOL)
-
-        capped_volumes = []
-        for candidate in candidate_volumes:
-            candidate = candidate.CapPlanarHoles(10 * TOL)
-            capped_volumes.append(candidate)
-
-        stress_distribution = sorted(capped_volumes, key=volume_lambda, reverse=False)[
-            0
-        ]
-        centroid = Rhino.Geometry.AreaMassProperties.Compute(
-            stress_distribution
-        ).Centroid
-        resultant_axis_line = Rhino.Geometry.Line(
-            centroid, centroid + joint_face.normal.to_vector_3d()
+        joint_face.set_stress_face_plane(
+            geometry.Plane.from_rhino_plane(splitting_plane)
         )
-        (
-            intersection_result,
-            curves,
-            points,
-        ) = Rhino.Geometry.Intersect.Intersection.CurveBrep(
-            resultant_axis_line.ToNurbsCurve(), joint_face.brep_surface, TOL
-        )
+        joint_face.create_stress_distribution()
 
         max_unit_stress = 0
-        for edge in stress_distribution.GetWireframe(0):
+        for edge in joint_face.stress_distribution.GetWireframe(0):
             edge_vector = geometry.Vector.from_vector_3d(
                 Rhino.Geometry.Vector3d(edge.PointAtStart - edge.PointAtEnd)
             )
@@ -238,10 +216,6 @@ class StressFieldComputer:
                 if stress > max_unit_stress:
                     max_unit_stress = stress
 
-        joint_face.resultant_location = geometry.Point(
-            points[0].X, points[0].Y, points[0].Z
-        )
-        joint_face.stress_distribution = stress_distribution
         return max_unit_stress
 
     def __compute_axial_stresses(self):
@@ -267,11 +241,21 @@ class StressFieldComputer:
             projected_force_on_axe_1 + projected_force_on_axe_2 - self.axial_force
         ).norm() < 1e-6, "Force decomposition failed"
         projected_forces = [projected_force_on_axe_1, projected_force_on_axe_2]
-        for i in range(2):
+        if projected_force_on_axe_1.norm() / projected_force_on_axe_2.norm() > 50:
+            print(
+                "Warning: projected force on axis 2 is less than 2 % of the one on axis 1. It is therefore neglected."
+            )
+            projected_forces.pop(1)
+        elif projected_force_on_axe_2.norm() / projected_force_on_axe_1.norm() > 50:
+            print(
+                "Warning: projected force on axis 1 is less than 2 % of the one on axis 2. It is therefore neglected."
+            )
+            projected_forces.pop(0)
+        for i in range(len(projected_forces)):
+            # Small trick that is reversed later in the function
             if i == 1:
                 for face in self.joint.faces:
                     face.normal = -1 * face.normal
-            print(f"Projected force on main axis {i}: {projected_forces[i].norm()} N")
             facing_face_id = 0
             current_best_dot = 0.0
             for j in range(1, len(self.joint.faces)):
@@ -295,9 +279,6 @@ class StressFieldComputer:
                 if dot > current_best_dot:
                     current_best_dot = dot
                     helping_face_id = j
-            print(
-                f"Facing face id: {facing_face_id}, helping face id: {helping_face_id}"
-            )
 
             # Compute the equilibrium in the plane perpendicular to the force axis.
             projected_screw_axis = self.screw_axis.project_in_plane(projected_forces[i])
@@ -310,12 +291,10 @@ class StressFieldComputer:
             screw_axis_projection_factor = (
                 projected_screw_axis.norm() / self.screw_axis.norm()
             )
-            print(f"Screw axis projection factor: {screw_axis_projection_factor}")
             facing_normal_projection_factor = (
                 projected_facing_normal.norm()
                 / self.joint.faces[facing_face_id].normal.norm()
             )
-            print(f"Facing normal projection factor: {facing_normal_projection_factor}")
             helping_normal_projection_factor = (
                 projected_helping_normal.norm()
                 / self.joint.faces[helping_face_id].normal.norm()
@@ -328,21 +307,17 @@ class StressFieldComputer:
             )
             if screw_facing_face_angle > math.pi / 2:
                 screw_facing_face_angle = math.pi - screw_facing_face_angle
-            print(f"Screw-facing face angle: {screw_facing_face_angle}")
             if screw_helping_face_angle > math.pi / 2:
                 screw_helping_face_angle = math.pi - screw_helping_face_angle
-            print(f"Screw-helping face angle: {screw_helping_face_angle}")
+
             # Assuming a unit force on the helping face:
             projected_screw_component = math.sin(
                 math.pi - screw_helping_face_angle - screw_facing_face_angle
             ) / math.sin(screw_facing_face_angle)
-            print(f"Projected screw component: {projected_screw_component}")
             projected_facing_normal_component = math.sin(
                 screw_helping_face_angle
             ) / math.sin(screw_facing_face_angle)
-            print(
-                f"Projected facing normal component: {projected_facing_normal_component}"
-            )
+
             # I call facing_unit_resultant the resultant vector on the facing face when the force on the helping face is 1 N
             facing_unit_resultant = (
                 projected_facing_normal_component / facing_normal_projection_factor
@@ -353,6 +328,12 @@ class StressFieldComputer:
             helping_unit_resultant = (
                 -1 / helping_normal_projection_factor
             ) * self.joint.faces[helping_face_id].normal
+
+            # Here we reverse the trick done at the beginning of this function
+            if i == 1:
+                for face in self.joint.faces:
+                    face.normal = -1 * face.normal
+
             # Now I scale everything to make sure that they all counteract the exerted force
             resisting_unit_resultant = (
                 facing_unit_resultant.project_along(projected_forces[i])
@@ -365,10 +346,14 @@ class StressFieldComputer:
             facing_resultant = facing_unit_resultant * scaling_factor
             helping_resultant = helping_unit_resultant * scaling_factor
             screw_resultant = screw_unit_resultant * scaling_factor
-            print(
-                f"Facing resultant: {facing_resultant}, \n Helping resultant: {helping_resultant}, \n Screw resultant: {screw_resultant}"
+            sigma_facing = facing_resultant.norm() / (
+                self.joint.faces[facing_face_id].area
             )
-            # if i == 0:
-            #     Rhino.RhinoDoc.ActiveDoc.Objects.AddLine(Rhino.Geometry.Line(self.joint.faces[facing_face_id].resultant_location.to_point_3d(), facing_resultant.to_vector_3d()))
-            #     Rhino.RhinoDoc.ActiveDoc.Objects.AddLine(Rhino.Geometry.Line(self.joint.faces[helping_face_id].resultant_location.to_point_3d(), helping_resultant.to_vector_3d()))
-            #     Rhino.RhinoDoc.ActiveDoc.Objects.AddLine(Rhino.Geometry.Line(self.joint.faces[facing_face_id].resultant_location.to_point_3d(), screw_resultant.to_vector_3d()))
+            sigma_helping = helping_resultant.norm() / (
+                self.joint.faces[helping_face_id].area
+            )
+            self.joint.faces[facing_face_id].increase_stress_distribution(sigma_facing)
+            self.joint.faces[helping_face_id].increase_stress_distribution(
+                sigma_helping
+            )
+            print(f"force in screw: {screw_resultant.norm()} N")
