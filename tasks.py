@@ -33,4 +33,4 @@ def install_lib(ctx):
         python_path = f"C:\\Users\\{user}\\.rhinocode\\py39-rh8\\python.exe"
     else:
         python_path = f"/Users/{user}/.rhinocode/py39-rh8/python3.9"
-    ctx.run(f'"{python_path}" -m pip install ./src/python_library')
+    ctx.run(f'"{python_path}" -m pip install -e ./src/python_library')
