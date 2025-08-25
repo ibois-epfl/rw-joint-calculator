@@ -48,6 +48,30 @@
                 "wireDisplay": "default",
                 "sourceCount": 0,
                 "typeHintID": "float"
+            },
+            {
+                "name": "axial_force",
+                "nickname": "axial_force",
+                "description": "The axial force applied to the joint.",
+                "optional": false,
+                "allowTreeAccess": true,
+                "showTypeHints": true,
+                "scriptParamAccess": "item",
+                "wireDisplay": "default",
+                "sourceCount": 0,
+                "typeHintID": "vector"
+            },
+            {
+                "name": "screw_axis",
+                "nickname": "screw_axis",
+                "description": "The axis around which the screw is applied.",
+                "optional": false,
+                "allowTreeAccess": true,
+                "showTypeHints": true,
+                "scriptParamAccess": "item",
+                "wireDisplay": "default",
+                "sourceCount": 0,
+                "typeHintID": "vector"
             }
         ],
         "outputParameters": [
