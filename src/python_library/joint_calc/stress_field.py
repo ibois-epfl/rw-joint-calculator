@@ -4,20 +4,11 @@ It assumes a perfectly elastic material behavior (which is not completely accura
 """
 
 from joint_calc import geometry, joint, face
+from joint_calc.utils import volume_lambda
 
 import Rhino
 
 import math
-
-
-def volume_lambda(brep):
-    volume = abs(Rhino.Geometry.VolumeMassProperties.Compute(brep).Volume)
-    return volume
-
-
-def surface_lambda(brep):
-    return Rhino.Geometry.AreaMassProperties.Compute(brep).Area
-
 
 TOL = Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance
 
@@ -28,10 +19,14 @@ class StressFieldComputer:
         moment: geometry.Vector,
         rotation_point: geometry.Point,
         joint: joint.Joint,
+        axial_force: geometry.Vector,
+        screw_axis: geometry.Vector,
     ):
         self.moment = moment
         self.rotation_point = rotation_point
         self.joint = joint
+        self.axial_force = axial_force
+        self.screw_axis = screw_axis / screw_axis.norm()
         self.total_tensile_component = 0
 
     def compute_stress_field(self):
@@ -40,10 +35,10 @@ class StressFieldComputer:
         """
         stress_volumes = []
         unit_stresses = []
-        raw_unit_moment = Rhino.Geometry.Vector3d(0, 0, 0)
+        raw_unit_moment = geometry.Vector(0, 0, 0)
         for joint_face in self.joint.faces:
             # Compute the stress distribution on each face
-            max_unit_stress = self.__compute_face_unit_stresses(joint_face)
+            max_unit_stress = self.__compute_moment_unit_stresses(joint_face)
             stress_volumes.append(volume_lambda(joint_face.stress_distribution))
             unit_stresses.append(max_unit_stress)
         total_volume = sum(stress_volumes)
@@ -52,28 +47,23 @@ class StressFieldComputer:
         for i, joint_face in enumerate(self.joint.faces):
             moment_arm = joint_face.resultant_location - self.rotation_point
             total_unit_force_on_face = volume_lambda(joint_face.stress_distribution)
-            force_angle = Rhino.Geometry.Vector3d.VectorAngle(
-                self.moment.to_vector_3d(), joint_face.normal.to_vector_3d()
-            )
+            force_angle = self.moment.compute_angle_with(joint_face.normal)
             if force_angle > math.pi / 2:
                 force_angle = math.pi - force_angle
             tensile_component = total_unit_force_on_face * math.cos(force_angle)
-            cross_product = Rhino.Geometry.Vector3d.CrossProduct(
-                moment_arm.to_vector_3d(),
-                joint_face.normal.to_vector_3d() * total_unit_force_on_face,
+            cross_product = moment_arm.cross(
+                joint_face.normal * total_unit_force_on_face
             )
             # all faces must participate in the same direction:
-            if cross_product * self.moment.to_vector_3d() < 0:
-                cross_product = -cross_product
+            if cross_product.dot(self.moment) < 0:
+                cross_product = -1 * cross_product
             raw_unit_moment += cross_product
 
-        unit_resisting_moment = raw_unit_moment * self.moment.to_vector_3d().Unitize()
-        amplification_factor = self.moment.norm() / unit_resisting_moment.Length
+        unit_resisting_moment = raw_unit_moment.dot(self.moment / self.moment.norm())
+        amplification_factor = self.moment.norm() / unit_resisting_moment
         for i, joint_face in enumerate(self.joint.faces):
             joint_face.max_stress = amplification_factor * unit_stresses[i]
-            force_angle = Rhino.Geometry.Vector3d.VectorAngle(
-                self.moment.to_vector_3d(), joint_face.normal.to_vector_3d()
-            )
+            force_angle = self.moment.compute_angle_with(joint_face.normal)
             if force_angle > math.pi / 2:
                 force_angle = math.pi - force_angle
             tensile_component = (
@@ -85,7 +75,9 @@ class StressFieldComputer:
 
         self.total_tensile_component /= 2  # because the tensile force is equally shared between the two beams (the screw only takes half on both ends)
 
-    def __compute_face_unit_stresses(self, joint_face: face.JointFace):
+        self.__compute_axial_stresses()
+
+    def __compute_moment_unit_stresses(self, joint_face: face.JointFace):
         """
         Compute the stress distribution on a single face based on the applied moment and rotation axis.
         This is done by creating a Rhino.Geometry.Brep volume that represents the stress distribution resulting from a 10 degree rotation around the rotation axis.
@@ -200,35 +192,13 @@ class StressFieldComputer:
                     intersection_curves[0].PointAtStart,
                 )
             )
-        splitting_brep = Rhino.Geometry.PlaneSurface(
-            splitting_plane, interval, interval
-        ).ToBrep()
-        candidate_volumes = brep_volume.Split(splitting_brep, TOL)
-
-        capped_volumes = []
-        for candidate in candidate_volumes:
-            candidate = candidate.CapPlanarHoles(10 * TOL)
-            capped_volumes.append(candidate)
-
-        stress_distribution = sorted(capped_volumes, key=volume_lambda, reverse=False)[
-            0
-        ]
-        centroid = Rhino.Geometry.AreaMassProperties.Compute(
-            stress_distribution
-        ).Centroid
-        resultant_axis_line = Rhino.Geometry.Line(
-            centroid, centroid + joint_face.normal.to_vector_3d()
+        joint_face.set_stress_face_plane(
+            geometry.Plane.from_rhino_plane(splitting_plane)
         )
-        (
-            intersection_result,
-            curves,
-            points,
-        ) = Rhino.Geometry.Intersect.Intersection.CurveBrep(
-            resultant_axis_line.ToNurbsCurve(), joint_face.brep_surface, TOL
-        )
+        joint_face.create_stress_distribution()
 
         max_unit_stress = 0
-        for edge in stress_distribution.GetWireframe(0):
+        for edge in joint_face.stress_distribution.GetWireframe(0):
             edge_vector = geometry.Vector.from_vector_3d(
                 Rhino.Geometry.Vector3d(edge.PointAtStart - edge.PointAtEnd)
             )
@@ -237,8 +207,144 @@ class StressFieldComputer:
                 if stress > max_unit_stress:
                     max_unit_stress = stress
 
-        joint_face.resultant_location = geometry.Point(
-            points[0].X, points[0].Y, points[0].Z
-        )
-        joint_face.stress_distribution = stress_distribution
         return max_unit_stress
+
+    def __compute_axial_stresses(self):
+        """
+        Compute the axial stresses on each face based on an axial force applied to the joint.
+        To allow for force decomposition before
+
+        :return: None
+        """
+        main_axes = self.joint.main_axes
+        if len(main_axes) != 2:
+            raise ValueError("Joint must have exactly two main axes")
+        main_axes_angle = main_axes[0].compute_angle_with(main_axes[1])
+        force_axis_angle = main_axes[0].compute_angle_with(self.axial_force)
+        projected_force_on_axe_1 = (
+            self.axial_force.norm()
+            / math.sin(math.pi - main_axes_angle)
+            * math.sin(main_axes_angle - force_axis_angle)
+            * (main_axes[0] / main_axes[0].norm())
+        )
+        projected_force_on_axe_2 = self.axial_force - projected_force_on_axe_1
+        assert (
+            projected_force_on_axe_1 + projected_force_on_axe_2 - self.axial_force
+        ).norm() < 1e-6, "Force decomposition failed"
+        projected_forces = [projected_force_on_axe_1, projected_force_on_axe_2]
+        if projected_force_on_axe_1.norm() / projected_force_on_axe_2.norm() > 50:
+            print(
+                "Warning: projected force on axis 2 is less than 2 % of the one on axis 1. It is therefore neglected."
+            )
+            projected_forces.pop(1)
+        elif projected_force_on_axe_2.norm() / projected_force_on_axe_1.norm() > 50:
+            print(
+                "Warning: projected force on axis 1 is less than 2 % of the one on axis 2. It is therefore neglected."
+            )
+            projected_forces.pop(0)
+        for i in range(len(projected_forces)):
+            # Small trick that is reversed later in the function
+            if i == 1:
+                for face in self.joint.faces:
+                    face.normal = -1 * face.normal
+            facing_face_id = 0
+            current_best_dot = 0.0
+            for j in range(1, len(self.joint.faces)):
+                joint_face = self.joint.faces[j]
+                dot = joint_face.normal.dot(
+                    projected_forces[i] / projected_forces[i].norm()
+                )
+                if dot < current_best_dot:
+                    facing_face_id = j
+                    current_best_dot = dot
+
+            # Rhino.RhinoDoc.ActiveDoc.Objects.AddBrep(self.joint.faces[facing_face_id].brep_surface)
+            helping_face_id = 0
+            current_best_dot = 0
+            for j in range(1, len(self.joint.faces)):
+                if j == facing_face_id:
+                    continue
+                dot = self.joint.faces[facing_face_id].normal.dot(
+                    self.joint.faces[j].normal
+                )
+                if dot > current_best_dot:
+                    current_best_dot = dot
+                    helping_face_id = j
+
+            # Compute the equilibrium in the plane perpendicular to the force axis.
+            projected_screw_axis = self.screw_axis.project_in_plane(projected_forces[i])
+            projected_facing_normal = self.joint.faces[
+                facing_face_id
+            ].normal.project_in_plane(projected_forces[i])
+            projected_helping_normal = self.joint.faces[
+                helping_face_id
+            ].normal.project_in_plane(projected_forces[i])
+            screw_axis_projection_factor = (
+                projected_screw_axis.norm() / self.screw_axis.norm()
+            )
+            facing_normal_projection_factor = (
+                projected_facing_normal.norm()
+                / self.joint.faces[facing_face_id].normal.norm()
+            )
+            helping_normal_projection_factor = (
+                projected_helping_normal.norm()
+                / self.joint.faces[helping_face_id].normal.norm()
+            )
+            screw_facing_face_angle = projected_screw_axis.compute_angle_with(
+                projected_facing_normal
+            )
+            screw_helping_face_angle = projected_screw_axis.compute_angle_with(
+                projected_helping_normal
+            )
+            if screw_facing_face_angle > math.pi / 2:
+                screw_facing_face_angle = math.pi - screw_facing_face_angle
+            if screw_helping_face_angle > math.pi / 2:
+                screw_helping_face_angle = math.pi - screw_helping_face_angle
+
+            # Assuming a unit force on the helping face:
+            projected_screw_component = math.sin(
+                math.pi - screw_helping_face_angle - screw_facing_face_angle
+            ) / math.sin(screw_facing_face_angle)
+            projected_facing_normal_component = math.sin(
+                screw_helping_face_angle
+            ) / math.sin(screw_facing_face_angle)
+
+            # I call facing_unit_resultant the resultant vector on the facing face when the force on the helping face is 1 N
+            facing_unit_resultant = (
+                projected_facing_normal_component / facing_normal_projection_factor
+            ) * self.joint.faces[facing_face_id].normal
+            screw_unit_resultant = (
+                projected_screw_component / screw_axis_projection_factor
+            ) * self.screw_axis
+            helping_unit_resultant = (
+                -1 / helping_normal_projection_factor
+            ) * self.joint.faces[helping_face_id].normal
+
+            # Here we reverse the trick done at the beginning of this function
+            if i == 1:
+                for face in self.joint.faces:
+                    face.normal = -1 * face.normal
+
+            # Now I scale everything to make sure that they all counteract the exerted force
+            resisting_unit_resultant = (
+                facing_unit_resultant.project_along(projected_forces[i])
+                + helping_unit_resultant.project_along(projected_forces[i])
+                + screw_unit_resultant.project_along(projected_forces[i])
+            )
+            scaling_factor = (
+                projected_forces[i].norm() / resisting_unit_resultant.norm()
+            )
+            facing_resultant = facing_unit_resultant * scaling_factor
+            helping_resultant = helping_unit_resultant * scaling_factor
+            screw_resultant = screw_unit_resultant * scaling_factor
+            sigma_facing = facing_resultant.norm() / (
+                self.joint.faces[facing_face_id].area
+            )
+            sigma_helping = helping_resultant.norm() / (
+                self.joint.faces[helping_face_id].area
+            )
+            self.joint.faces[facing_face_id].increase_stress_distribution(sigma_facing)
+            self.joint.faces[helping_face_id].increase_stress_distribution(
+                sigma_helping
+            )
+            print(f"force in screw: {screw_resultant.norm()} N")

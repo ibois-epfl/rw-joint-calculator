@@ -7,12 +7,14 @@ from ghpythonlib.componentbase import executingcomponent as component
 from joint_calc import face, joint, stress_field, geometry
 
 
-class RWJCMomentCalculator(component):
+class RWJCStressComputer(component):
     def RunScript(
         self,
         brep_faces: System.Collections.Generic.List[Rhino.Geometry.BrepFace],
         moment_vector: Rhino.Geometry.Vector3d,
         rotation_center: Rhino.Geometry.Point3d,
+        axial_force: Rhino.Geometry.Vector3d,
+        screw_axis: Rhino.Geometry.Vector3d,
     ):
         vectors = []
         anchors = []
@@ -53,6 +55,16 @@ class RWJCMomentCalculator(component):
                 rotation_center.Z,
             ),
             joint=my_joint,
+            axial_force=geometry.Vector(
+                axial_force.X,
+                axial_force.Y,
+                axial_force.Z,
+            ),
+            screw_axis=geometry.Vector(
+                screw_axis.X,
+                screw_axis.Y,
+                screw_axis.Z,
+            ),
         )
         stress_computer.compute_stress_field()
         print(
@@ -60,13 +72,16 @@ class RWJCMomentCalculator(component):
         )
 
         for joint_face in my_joint.faces:
-            anchors.append(
-                Rhino.Geometry.Point3d(
-                    joint_face.resultant_location.x,
-                    joint_face.resultant_location.y,
-                    joint_face.resultant_location.z,
+            if joint_face.is_stressed:
+                anchors.append(
+                    Rhino.Geometry.Point3d(
+                        joint_face.resultant_location.x,
+                        joint_face.resultant_location.y,
+                        joint_face.resultant_location.z,
+                    )
                 )
-            )
+            else:
+                anchors.append(None)
         stress_distributions = [
             joint_face.stress_distribution for joint_face in my_joint.faces
         ]
@@ -76,3 +91,8 @@ class RWJCMomentCalculator(component):
         ]
 
         return [vectors, anchors, stress_distributions, sigma_maxs]
+
+
+# if __name__ == "__main__":
+#     component = RWJCStressComputer()
+#     vectors, anchors, stress_distributions, sigma_maxs = component.RunScript(brep_faces, moment_vector, rotation_center, axial_force, screw_axis)
