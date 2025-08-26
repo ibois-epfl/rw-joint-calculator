@@ -5,7 +5,7 @@ This module contains the dataclass for joint faces
 from dataclasses import dataclass
 
 from joint_calc import geometry
-from joint_calc.stress_field import volume_lambda
+from joint_calc.utils import volume_lambda
 
 import Rhino
 

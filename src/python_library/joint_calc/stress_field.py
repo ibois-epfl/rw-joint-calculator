@@ -4,20 +4,11 @@ It assumes a perfectly elastic material behavior (which is not completely accura
 """
 
 from joint_calc import geometry, joint, face
+from joint_calc.utils import volume_lambda
 
 import Rhino
 
 import math
-
-
-def volume_lambda(brep):
-    volume = abs(Rhino.Geometry.VolumeMassProperties.Compute(brep).Volume)
-    return volume
-
-
-def surface_lambda(brep):
-    return Rhino.Geometry.AreaMassProperties.Compute(brep).Area
-
 
 TOL = Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance
 
