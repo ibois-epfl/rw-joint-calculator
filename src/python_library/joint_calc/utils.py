@@ -2,7 +2,7 @@
 
 import Rhino
 
-from joint_calc import geometry
+import joint_calc
 
 
 def compute_area(brep_face: Rhino.Geometry.Brep) -> float:
@@ -13,10 +13,10 @@ def compute_area(brep_face: Rhino.Geometry.Brep) -> float:
     return area_properties.Area
 
 
-def compute_centroid(brep_face: Rhino.Geometry.Brep) -> geometry.Point:
+def compute_centroid(brep_face: Rhino.Geometry.Brep) -> joint_calc.geometry.Point:
     """Compute the centroid of a Brep face."""
     area_properties = Rhino.Geometry.AreaMassProperties.Compute(brep_face)
     if area_properties is None:
         raise ValueError("Could not compute centroid for the given Brep face.")
     centroid_3d = area_properties.Centroid
-    return geometry.Point.from_Point3d(centroid_3d)
+    return joint_calc.geometry.Point.from_Point3d(centroid_3d)
