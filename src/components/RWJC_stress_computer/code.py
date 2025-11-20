@@ -4,12 +4,14 @@ import Rhino
 
 from ghpythonlib.componentbase import executingcomponent as component
 
+import joint_calc
+
 
 class RWJCMomentCalculator(component):
     def RunScript(
         self,
         rh_base_face: Rhino.Geometry.Brep,
-        rh_faces_elem: System.Collections.Generic.List[Rhino.Geometry.BrepFace],
+        rh_surfaces_elem: System.Collections.Generic.List[Rhino.Geometry.BrepFace],
         rh_rotation_axis: Rhino.Geometry.Line,
     ) -> System.Collections.Generic.List[Rhino.Geometry.Vector3d]:
         success, crv_param = Rhino.Geometry.Intersect.Intersection.CurveBrep(
@@ -28,66 +30,33 @@ class RWJCMomentCalculator(component):
                 "No intersection found between rotation axis and base face."
             )
 
-        planes = []
-        anchors = []
-        normals = []
-        working_surfaces = []
-
-        rotation_avis_vector = Rhino.Geometry.Vector3d(
-            rh_rotation_axis.PointAtStart - rh_rotation_axis.PointAtEnd
+        rotation_axis_vector = joint_calc.geometry.Vector.from_vector_3d(
+            Rhino.Geometry.Vector3d(
+                rh_rotation_axis.PointAtStart - rh_rotation_axis.PointAtEnd
+            )
         )
 
-        for face in rh_faces_elem:
-            brep_face = face.Faces[0]
-            anchor = Rhino.Geometry.AreaMassProperties.Compute(face).Centroid
-            normal = brep_face.NormalAt(0, 0)
-            if normal * rotation_avis_vector < 0:
-                print("Inverting normal vector.")
-                normal *= -1
-            normals.append(normal)
-            plane = Rhino.Geometry.Plane(test_point, rotation_avis_vector, normal)
-            success, crvs, pts = Rhino.Geometry.Intersect.Intersection.BrepPlane(
-                face, plane, Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance
-            )
-            if success and crvs:
-                curve = crvs[0]
-                planes.append(plane)
-                candidate_surfaces = face.Split(
-                    [curve], Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance
+        jc_joint_faces = []
+        for brep_surfaces in rh_surfaces_elem:
+            jc_joint_faces.append(
+                joint_calc.face.JointFace(
+                    id=0, parent_joint_id=0, rh_joint_brep_face=brep_surfaces.Faces[0]
                 )
-                candidate_surfaces_centroids = [
-                    Rhino.Geometry.AreaMassProperties.Compute(srf).Centroid
-                    for srf in candidate_surfaces
-                ]
-                for idx, centroid in enumerate(candidate_surfaces_centroids):
-                    if (
-                        Rhino.Geometry.Vector3d.CrossProduct(
-                            normal, Rhino.Geometry.Vector3d(centroid - test_point)
-                        )
-                        * rotation_avis_vector
-                        < 0
-                    ):
-                        working_surfaces.append(candidate_surfaces[idx])
+            )
 
-            else:
-                if (
-                    Rhino.Geometry.Vector3d.CrossProduct(
-                        normal, Rhino.Geometry.Vector3d(anchor - test_point)
-                    )
-                    * rotation_avis_vector
-                    < 0
-                ):
-                    working_surfaces.append(face)
-                planes.append(plane)
-                print("No intersection found between face and plane.")
+        jc_joint = joint_calc.joint.Joint(
+            id=0,
+            original_faces=jc_joint_faces,
+            moment_vector=rotation_axis_vector,
+            rotation_point=joint_calc.geometry.Point.from_Point3d(test_point),
+        )
 
-            anchors.append(anchor)
-        return planes, anchors, normals, working_surfaces
+        return jc_joint.working_faces
 
 
 if __name__ == "__main__":
     component = RWJCMomentCalculator()
-    o_planes, o_anchors, o_normals, o_working_surfaces = component.RunScript(
+    o_working_surfaces = component.RunScript(
         i_base_face,  # noqa: F821
         i_faces_elem,  # noqa: F821
         i_rotation_axis,  # noqa: F821
