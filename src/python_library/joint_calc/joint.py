@@ -35,7 +35,10 @@ class Joint:
             if success and rh_crvs:
                 rh_curve = rh_crvs[0]
                 rh_candidate_surfaces = joint_face.rh_joint_brep_face.Brep.Split(
-                    [rh_curve], Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance
+                    [rh_curve],
+                    joint_face.rh_normal,
+                    False,
+                    Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance,
                 )
                 candidate_surfaces_centroids = [
                     joint_calc.utils.compute_centroid(srf)
