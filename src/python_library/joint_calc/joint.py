@@ -56,7 +56,13 @@ class Joint:
                         * self.moment_vector.to_vector_3d()
                         < 0
                     ):
-                        self.working_faces.append(rh_candidate_surfaces[idx])
+                        self.working_faces.append(
+                            joint_calc.face.JointFace(
+                                id=joint_face.id,
+                                parent_joint_id=joint_face.parent_joint_id,
+                                rh_joint_brep_face=rh_candidate_surfaces[idx].Faces[0],
+                            )
+                        )
 
             else:
                 if (
@@ -70,7 +76,13 @@ class Joint:
                     * self.moment_vector.to_vector_3d()
                     < 0
                 ):
-                    self.working_faces.append(joint_face.rh_joint_brep_face.Brep)
+                    self.working_faces.append(
+                        joint_calc.face.JointFace(
+                            id=joint_face.id,
+                            parent_joint_id=joint_face.parent_joint_id,
+                            rh_joint_brep_face=joint_face.rh_joint_brep_face,
+                        )
+                    )
 
     def __post_init__(self):
         for joint_face in self.original_faces:
