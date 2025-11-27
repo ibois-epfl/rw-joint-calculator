@@ -51,7 +51,9 @@ class RWJCMomentCalculator(component):
             rotation_point=joint_calc.geometry.Point.from_Point3d(test_point),
         )
 
-        return jc_joint.working_faces
+        print(f"Inertia along moment axis: {jc_joint.inertia_along_moment_axis}")
+
+        return [jc_face.rh_joint_brep_face for jc_face in jc_joint.working_faces]
 
 
 if __name__ == "__main__":

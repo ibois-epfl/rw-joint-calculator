@@ -16,6 +16,7 @@ class Joint:
     moment_vector: joint_calc.geometry.Vector
     rotation_point: joint_calc.geometry.Point
     working_faces: list[joint_calc.face.JointFace] = None
+    inertia_along_moment_axis: joint_calc.geometry.Vector = None
 
     def detect_working_faces(self):
         self.working_faces = []
@@ -91,3 +92,17 @@ class Joint:
                 joint_face.rh_normal *= -1
 
         self.detect_working_faces()
+
+        # Calculate total inertia along moment axis
+        for joint_face in self.working_faces:
+            inertia = joint_face.compute_inertia(
+                Rhino.Geometry.Plane(
+                    self.rotation_point.to_point_3d(),
+                    self.moment_vector.to_vector_3d(),
+                    joint_face.rh_normal,
+                )
+            )
+            if self.inertia_along_moment_axis is None:
+                self.inertia_along_moment_axis = inertia.z
+            else:
+                self.inertia_along_moment_axis += inertia.z
