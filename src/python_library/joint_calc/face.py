@@ -26,3 +26,20 @@ class JointFace:
         self.area = joint_calc.utils.compute_area(self.rh_joint_brep_face)
         self.rh_normal = self.rh_joint_brep_face.NormalAt(0, 0)
         self.centroid = joint_calc.utils.compute_centroid(self.rh_joint_brep_face)
+
+    def compute_inertia(self, base_plane: Rhino.Geometry.Plane) -> float:
+        """Compute the moment of inertia of the joint face around a given base plane."""
+        transform = Rhino.Geometry.Transform.PlaneToPlane(
+            base_plane, Rhino.Geometry.Plane.WorldXY
+        )
+        rh_face_copy = self.rh_joint_brep_face.Brep.Duplicate()
+        rh_face_copy.Transform(transform)
+
+        area_properties = Rhino.Geometry.AreaMassProperties.Compute(rh_face_copy)
+        if area_properties is None:
+            raise ValueError(
+                "Could not compute area properties for the given Brep face."
+            )
+        return joint_calc.geometry.Vector.from_vector_3d(
+            area_properties.WorldCoordinatesSecondMoments
+        )
