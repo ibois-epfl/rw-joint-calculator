@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import Rhino
 
-import joint_calc
+from . import geometry, utils
 
 
 @dataclass
@@ -19,13 +19,13 @@ class JointFace:
     id: int
     parent_joint_id: int
     rh_joint_brep_face: Rhino.Geometry.BrepFace
-    resultant_location: joint_calc.geometry.Point = None  # The location of the resultant force vector that will be applied on this face
+    resultant_location: geometry.Point = None  # The location of the resultant force vector that will be applied on this face
     max_stress: float = 0.0
 
     def __post_init__(self):
-        self.area = joint_calc.utils.compute_area(self.rh_joint_brep_face)
+        self.area = utils.compute_area(self.rh_joint_brep_face)
         self.rh_normal = self.rh_joint_brep_face.NormalAt(0, 0)
-        self.centroid = joint_calc.utils.compute_centroid(self.rh_joint_brep_face)
+        self.centroid = utils.compute_centroid(self.rh_joint_brep_face)
 
     def compute_inertia(self, base_plane: Rhino.Geometry.Plane) -> float:
         """Compute the moment of inertia of the joint face around a given base plane."""
@@ -40,6 +40,6 @@ class JointFace:
             raise ValueError(
                 "Could not compute area properties for the given Brep face."
             )
-        return joint_calc.geometry.Vector.from_vector_3d(
+        return geometry.Vector.from_vector_3d(
             area_properties.WorldCoordinatesSecondMoments
         )
