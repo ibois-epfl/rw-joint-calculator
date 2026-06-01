@@ -37,10 +37,10 @@ class Joint:
             if len(result) > 0:
                 for r in result:
                     subface_centroid = utils.compute_centroid(r)
-                    oriented_normal = r.Faces[0].NormalAt(0, 0)
-                    Rhino.RhinoDoc.ActiveDoc.Objects.AddPoint(
+                    success, u, v = r.Faces[0].ClosestPoint(
                         subface_centroid.to_point_3d()
                     )
+                    oriented_normal = r.Faces[0].NormalAt(u, v)
                     rot_point_to_centroid = Rhino.Geometry.Vector3d(
                         subface_centroid.x - self.rotation_point.x,
                         subface_centroid.y - self.rotation_point.y,
@@ -53,7 +53,6 @@ class Joint:
                         self.working_faces.append(r)
             else:
                 centroid = joint_face.centroid
-                Rhino.RhinoDoc.ActiveDoc.Objects.AddPoint(centroid.to_point_3d())
                 oriented_normal = joint_face.rh_normal
                 rot_point_to_centroid = Rhino.Geometry.Vector3d(
                     centroid.x - self.rotation_point.x,
