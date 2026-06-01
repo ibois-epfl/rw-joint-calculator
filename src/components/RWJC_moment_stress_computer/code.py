@@ -29,10 +29,11 @@ class RWJCMomentCalculator(component):
             moment_vector=geometry.Vector.from_vector_3d(moment_vector),
             rotation_point=geometry.Point.from_Point3d(anchor_point),
         )
+        print(f"inertia along moment axis: {my_joint.inertia_along_moment_axis} m^4")
         return my_joint.working_faces
 
 
 if __name__ == "__main__":
     c = RWJCMomentCalculator()
     catch = c.RunScript(brep_faces, moment_vector, anchor_point)  # noqa
-    catch = [face for face in catch]
+    catch = [face.rh_joint_brep_face for face in catch]
