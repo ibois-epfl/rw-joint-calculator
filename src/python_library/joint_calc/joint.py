@@ -50,7 +50,12 @@ class Joint:
                         rot_point_to_centroid, oriented_normal
                     )
                     if moment_participation * self.moment_vector.to_vector_3d() < 0:
-                        self.working_faces.append(r)
+                        wf = face.JointFace(
+                            id=joint_face.id,
+                            parent_joint_id=self.id,
+                            rh_joint_brep_face=r.Faces[0],
+                        )
+                        self.working_faces.append(wf)
             else:
                 centroid = joint_face.centroid
                 oriented_normal = joint_face.rh_normal
@@ -63,7 +68,7 @@ class Joint:
                     rot_point_to_centroid, oriented_normal
                 )
                 if moment_participation * self.moment_vector.to_vector_3d() < 0:
-                    self.working_faces.append(joint_face.rh_joint_brep_face)
+                    self.working_faces.append(joint_face)
 
     def __post_init__(self):
         # for joint_face in self.original_faces:
@@ -74,15 +79,15 @@ class Joint:
         self.detect_working_faces()
 
         # Calculate total inertia along moment axis
-        # for joint_face in self.working_faces:
-        #     inertia = joint_face.compute_inertia(
-        #         Rhino.Geometry.Plane(
-        #             self.rotation_point.to_point_3d(),
-        #             self.moment_vector.to_vector_3d(),
-        #             joint_face.rh_normal,
-        #         )
-        #     )
-        #     if self.inertia_along_moment_axis is None:
-        #         self.inertia_along_moment_axis = inertia.z
-        #     else:
-        #         self.inertia_along_moment_axis += inertia.z
+        for joint_face in self.working_faces:
+            inertia = joint_face.compute_inertia(
+                Rhino.Geometry.Plane(
+                    self.rotation_point.to_point_3d(),
+                    self.moment_vector.to_vector_3d(),
+                    joint_face.rh_normal,
+                )
+            )
+            if self.inertia_along_moment_axis is None:
+                self.inertia_along_moment_axis = inertia.z
+            else:
+                self.inertia_along_moment_axis += inertia.z
