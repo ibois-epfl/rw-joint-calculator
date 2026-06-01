@@ -24,8 +24,11 @@ class JointFace:
 
     def __post_init__(self):
         self.area = utils.compute_area(self.rh_joint_brep_face)
-        self.rh_normal = self.rh_joint_brep_face.NormalAt(0, 0)
         self.centroid = utils.compute_centroid(self.rh_joint_brep_face)
+        success, u, v = self.rh_joint_brep_face.ClosestPoint(
+            self.centroid.to_point_3d()
+        )
+        self.rh_normal = self.rh_joint_brep_face.NormalAt(u, v)
 
     def compute_inertia(self, base_plane: Rhino.Geometry.Plane) -> float:
         """Compute the moment of inertia of the joint face around a given base plane."""
