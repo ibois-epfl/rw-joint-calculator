@@ -141,9 +141,9 @@ class Joint:
                 E0=10e9,  # Example value for E0 in Pascals
                 E90=300e6,  # Example value for E90 in Pascals
             )
-            L = math.sqrt(
-                working_face.area
-            )  # Characteristic length, can be adjusted based on the face geometry
+            working_face.Young_modulus = E
+            L = math.sqrt(working_face.area)
+            working_face.effective_depth = L
 
             K += E * Riemann_sum / L
         self.k_value = K
