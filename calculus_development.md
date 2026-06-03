@@ -35,3 +35,9 @@ $$M = \psi \sum_i \frac{E_i}{L_i} \int_{\Omega_i} || \vec{d_{\perp}} || ^2 * \co
 
 This expression depends on $L_i$, the effective depths taken into account for the deformation of the joint faces. It is not a value we can determine a-priori, and it determines linearly the value of $\psi$ for a given moment. A first-order estimate is to assume $L_i$ is proportional to the log radius $r$, leading to $L_i=r$. This choice is heuristic and must be validated experimentally.
 The expression also depends on $\theta$, which is not constant on $\Omega_i$. One option is to use the value at the face centroid and thus be able to extract the $\cos(\theta)$ from the integral, assuming $\theta$ is sufficiently homogeneous over the face. This assumption is very dependent on joint geometry and should be systematically validated for a given geometry. Another is to discretize the surface and evaluate the integral as a Riemann sum.
+
+The value of $E_i$ will depend on fibre orientation on the joint face and according to [1](https://doi.org/10.1007/978-3-030-81315-4) (p405) it can be axpressed from $E_{\perp}$ and $E_{\parallel}$ as:
+
+$$ E_{\gamma} = \frac{E_{\parallel} * E_{\perp}}{E_{\parallel} * \sin(\gamma)^2 + E_{\perp} * \cos(\gamma)^2} $$
+
+With $\gamma$ the angle between $\vec{n}$ and the wood fibre, which can be approximated with the beam axis.
