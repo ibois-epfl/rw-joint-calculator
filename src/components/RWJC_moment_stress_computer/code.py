@@ -13,6 +13,7 @@ class RWJCMomentCalculator(component):
         brep_faces: System.Collections.Generic.List[Rhino.Geometry.BrepFace],
         moment_vector: Rhino.Geometry.Vector3d,
         anchor_point: Rhino.Geometry.Point3d,
+        wood_direction: Rhino.Geometry.Vector3d,
     ):
         joint_faces = []
         for i, brep_face in enumerate(brep_faces):
@@ -28,12 +29,12 @@ class RWJCMomentCalculator(component):
             original_faces=joint_faces,
             moment_vector=geometry.Vector.from_vector_3d(moment_vector),
             rotation_point=geometry.Point.from_Point3d(anchor_point),
+            wood_direction=geometry.Vector.from_vector_3d(wood_direction),
         )
-        print(f"inertia along moment axis: {my_joint.inertia_along_moment_axis} m^4")
         return my_joint.working_faces
 
 
 if __name__ == "__main__":
     c = RWJCMomentCalculator()
-    catch = c.RunScript(brep_faces, moment_vector, anchor_point)  # noqa
+    catch = c.RunScript(brep_faces, moment_vector, anchor_point, wood_direction)  # noqa
     catch = [face.rh_joint_brep_face for face in catch]

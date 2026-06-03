@@ -15,6 +15,7 @@ class Joint:
     original_faces: list[face.JointFace]
     moment_vector: geometry.Vector
     rotation_point: geometry.Point
+    wood_direction: geometry.Vector
     working_faces: list[face.JointFace] = None
     inertia_along_moment_axis: geometry.Vector = None
 
