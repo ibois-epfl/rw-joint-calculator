@@ -5,6 +5,7 @@ This is a module to store joints with their faces
 import Rhino
 
 from dataclasses import dataclass
+import math
 
 from . import face, geometry, utils
 
@@ -18,6 +19,7 @@ class Joint:
     wood_direction: geometry.Vector
     working_faces: list[face.JointFace] = None
     inertia_along_moment_axis: geometry.Vector = None
+    k_value: float = None
 
     def detect_working_faces(self):
         self.working_faces = []
@@ -71,24 +73,85 @@ class Joint:
                 if moment_participation * self.moment_vector.to_vector_3d() < 0:
                     self.working_faces.append(joint_face)
 
-    def __post_init__(self):
-        # for joint_face in self.original_faces:
-        #     if joint_face.rh_normal * self.moment_vector.to_vector_3d() < 0:
-        #         print("Inverting normal vector.")
-        #         joint_face.rh_normal *= -1
+    def compute_joint_rigidity(self):
+        """
+        Computes the K value of the joint based on the working faces and their inertia along the moment axis.
+        """
+        K = 0.0
+        for working_face in self.working_faces:
+            mesh = Rhino.Geometry.Mesh.CreateFromBrep(
+                working_face.rh_joint_brep_face.Brep,
+                Rhino.Geometry.MeshingParameters.Default,
+            )[0]
+            normal = working_face.rh_normal
+            Riemann_sum = 0.0
+            for mesh_face in mesh.Faces:
+                if mesh_face.IsQuad:
+                    v0 = mesh.Vertices[mesh_face.A]
+                    v1 = mesh.Vertices[mesh_face.B]
+                    v2 = mesh.Vertices[mesh_face.C]
+                    v3 = mesh.Vertices[mesh_face.D]
+                    centroid = geometry.Point(
+                        x=(v0.X + v1.X + v2.X + v3.X) / 4,
+                        y=(v0.Y + v1.Y + v2.Y + v3.Y) / 4,
+                        z=(v0.Z + v1.Z + v2.Z + v3.Z) / 4,
+                    )
+                    mesh_from_face = Rhino.Geometry.Mesh()
+                    mesh_from_face.Vertices.Add(v0)
+                    mesh_from_face.Vertices.Add(v1)
+                    mesh_from_face.Vertices.Add(v2)
+                    mesh_from_face.Vertices.Add(v3)
+                    mesh_from_face.Faces.AddFace(0, 1, 2, 3)
+                    area = Rhino.Geometry.AreaMassProperties.Compute(
+                        mesh_from_face, True, False, False, False
+                    ).Area
 
-        self.detect_working_faces()
+                else:
+                    v0 = mesh.Vertices[mesh_face.A]
+                    v1 = mesh.Vertices[mesh_face.B]
+                    v2 = mesh.Vertices[mesh_face.C]
+                    centroid = geometry.Point(
+                        x=(v0.X + v1.X + v2.X) / 3,
+                        y=(v0.Y + v1.Y + v2.Y) / 3,
+                        z=(v0.Z + v1.Z + v2.Z) / 3,
+                    )
+                    mesh_from_face = Rhino.Geometry.Mesh()
+                    mesh_from_face.Vertices.Add(v0)
+                    mesh_from_face.Vertices.Add(v1)
+                    mesh_from_face.Vertices.Add(v2)
+                    mesh_from_face.Faces.AddFace(0, 1, 2)
+                    area = Rhino.Geometry.AreaMassProperties.Compute(
+                        mesh_from_face, True, False, False, False
+                    ).Area
 
-        # Calculate total inertia along moment axis
-        for joint_face in self.working_faces:
-            inertia = joint_face.compute_inertia(
-                Rhino.Geometry.Plane(
-                    self.rotation_point.to_point_3d(),
-                    self.moment_vector.to_vector_3d(),
-                    joint_face.rh_normal,
+                d = Rhino.Geometry.Vector3d(
+                    self.rotation_point.x - centroid.x,
+                    self.rotation_point.y - centroid.y,
+                    self.rotation_point.z - centroid.z,
                 )
+                d_perp = d - (d * normal) * normal
+                theta = Rhino.Geometry.Vector3d.VectorAngle(
+                    Rhino.Geometry.Vector3d.CrossProduct(d, normal),
+                    self.moment_vector.to_vector_3d(),
+                )
+                Riemann_sum += area * d_perp.Length**2 * math.cos(theta)
+            E = utils.compute_young_modulus(
+                grain_orientation=self.wood_direction,
+                face_normal=geometry.Vector.from_vector_3d(working_face.rh_normal),
+                E0=10e9,  # Example value for E0 in Pascals
+                E90=300e6,  # Example value for E90 in Pascals
             )
-            if self.inertia_along_moment_axis is None:
-                self.inertia_along_moment_axis = inertia.z
-            else:
-                self.inertia_along_moment_axis += inertia.z
+            L = math.sqrt(
+                working_face.area
+            )  # Characteristic length, can be adjusted based on the face geometry
+
+            K += E * Riemann_sum / L
+        self.k_value = K
+
+        print(f"Computed K value for Joint {self.id}: {K:.2f} Nm/radians")
+        # text_dot = Rhino.Geometry.TextDot(f"K value: {K:.2f}\nE:kNm / radians", self.rotation_point.to_point_3d())
+        # Rhino.RhinoDoc.ActiveDoc.Objects.AddTextDot(text_dot)
+
+    def __post_init__(self):
+        self.detect_working_faces()
+        self.compute_joint_rigidity()

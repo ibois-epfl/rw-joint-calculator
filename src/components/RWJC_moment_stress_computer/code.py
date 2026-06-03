@@ -37,4 +37,4 @@ class RWJCMomentCalculator(component):
 if __name__ == "__main__":
     c = RWJCMomentCalculator()
     catch = c.RunScript(brep_faces, moment_vector, anchor_point, wood_direction)  # noqa
-    catch = [face.rh_joint_brep_face for face in catch]
+    catch = [working_face.rh_joint_brep_face for working_face in catch]
