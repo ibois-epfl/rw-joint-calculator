@@ -152,6 +152,68 @@ class Joint:
         # text_dot = Rhino.Geometry.TextDot(f"K value: {K:.2f}\nE:kNm / radians", self.rotation_point.to_point_3d())
         # Rhino.RhinoDoc.ActiveDoc.Objects.AddTextDot(text_dot)
 
+    def compute_stress_distribution(self):
+        """
+        Computes the stress distribution on the working faces based on the applied moment and the computed K value.
+        """
+        if self.k_value is None:
+            self.compute_joint_rigidity()
+
+        psi = self.moment_vector.norm() / self.k_value
+        print(
+            f"Applied rotation (psi) for Joint {self.id}: {math.degrees(psi):.2f} degrees"
+        )
+
+        for working_face in self.working_faces:
+            mesh = Rhino.Geometry.Mesh.CreateFromBrep(
+                working_face.rh_joint_brep_face.Brep,
+                Rhino.Geometry.MeshingParameters.Default,
+            )[0]
+            Rhino.RhinoDoc.ActiveDoc.Objects.AddMesh(mesh)
+            normal = working_face.rh_normal
+            max_stress = 0.0
+            location_of_max_stress = None
+            for mesh_face in mesh.Faces:
+                if mesh_face.IsQuad:
+                    v0 = mesh.Vertices[mesh_face.A]
+                    v1 = mesh.Vertices[mesh_face.B]
+                    v2 = mesh.Vertices[mesh_face.C]
+                    v3 = mesh.Vertices[mesh_face.D]
+                    centroid = geometry.Point(
+                        x=(v0.X + v1.X + v2.X + v3.X) / 4,
+                        y=(v0.Y + v1.Y + v2.Y + v3.Y) / 4,
+                        z=(v0.Z + v1.Z + v2.Z + v3.Z) / 4,
+                    )
+                else:
+                    v0 = mesh.Vertices[mesh_face.A]
+                    v1 = mesh.Vertices[mesh_face.B]
+                    v2 = mesh.Vertices[mesh_face.C]
+                    centroid = geometry.Point(
+                        x=(v0.X + v1.X + v2.X) / 3,
+                        y=(v0.Y + v1.Y + v2.Y) / 3,
+                        z=(v0.Z + v1.Z + v2.Z) / 3,
+                    )
+
+                d = Rhino.Geometry.Vector3d(
+                    self.rotation_point.x - centroid.x,
+                    self.rotation_point.y - centroid.y,
+                    self.rotation_point.z - centroid.z,
+                )
+
+                d_perp = d - (d * normal) * normal
+
+                sigma = (
+                    math.tan(psi)
+                    * Rhino.Geometry.Vector3d.CrossProduct(d_perp, normal).Length
+                    / working_face.effective_depth
+                ) * working_face.Young_modulus
+                if sigma > max_stress:
+                    max_stress = sigma
+                    location_of_max_stress = centroid
+            working_face.max_stress = max_stress
+            working_face.location_of_max_stress = location_of_max_stress
+
     def __post_init__(self):
         self.detect_working_faces()
         self.compute_joint_rigidity()
+        self.compute_stress_distribution()
