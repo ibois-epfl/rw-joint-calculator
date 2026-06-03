@@ -169,7 +169,6 @@ class Joint:
                 working_face.rh_joint_brep_face.Brep,
                 Rhino.Geometry.MeshingParameters.Default,
             )[0]
-            Rhino.RhinoDoc.ActiveDoc.Objects.AddMesh(mesh)
             normal = working_face.rh_normal
             max_stress = 0.0
             location_of_max_stress = None

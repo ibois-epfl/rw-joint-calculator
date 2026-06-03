@@ -37,4 +37,15 @@ class RWJCMomentCalculator(component):
 if __name__ == "__main__":
     c = RWJCMomentCalculator()
     catch = c.RunScript(brep_faces, moment_vector, anchor_point, wood_direction)  # noqa
-    catch = [working_face.rh_joint_brep_face for working_face in catch]
+    # catch = [working_face.rh_joint_brep_face for working_face in catch]
+    max_stresses = [working_face.max_stress for working_face in catch]
+    max_stress_locations = [
+        working_face.location_of_max_stress for working_face in catch
+    ]
+    text_dots = [
+        Rhino.Geometry.TextDot(
+            f"Max Stress: {max_stress / 1e6:.2f} MPa", location.to_point_3d()
+        )
+        for max_stress, location in zip(max_stresses, max_stress_locations)
+    ]
+    working_face_breps = [working_face.rh_joint_brep_face for working_face in catch]
