@@ -24,6 +24,7 @@ class JointFace:
     effective_depth: float = None
     Young_modulus: float = None
     location_of_max_stress: geometry.Point = None
+    mesh: Rhino.Geometry.Mesh = None
 
     def __post_init__(self):
         self.area = utils.compute_area(self.rh_joint_brep_face)
