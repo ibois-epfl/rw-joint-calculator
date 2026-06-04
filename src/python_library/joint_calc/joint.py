@@ -20,6 +20,7 @@ class Joint:
     working_faces: list[face.JointFace] = None
     inertia_along_moment_axis: geometry.Vector = None
     k_value: float = None
+    stress_resultant: geometry.Vector = None
 
     def detect_working_faces(self):
         self.working_faces = []
@@ -79,10 +80,14 @@ class Joint:
         """
         K = 0.0
         for working_face in self.working_faces:
-            mesh = Rhino.Geometry.Mesh.CreateFromBrep(
-                working_face.rh_joint_brep_face.Brep,
-                Rhino.Geometry.MeshingParameters.Default,
-            )[0]
+            if working_face.mesh is None:
+                working_face.mesh = Rhino.Geometry.Mesh.CreateFromBrep(
+                    working_face.rh_joint_brep_face.Brep,
+                    Rhino.Geometry.MeshingParameters.Default,
+                )[0]
+                working_face.mesh.Subdivide()
+            mesh = working_face.mesh
+
             normal = working_face.rh_normal
             Riemann_sum = 0.0
             for mesh_face in mesh.Faces:
@@ -164,14 +169,101 @@ class Joint:
             f"Applied rotation (psi) for Joint {self.id}: {math.degrees(psi):.2f} degrees"
         )
 
+        stress_resultant = geometry.Vector(0, 0, 0)
+
         for working_face in self.working_faces:
-            mesh = Rhino.Geometry.Mesh.CreateFromBrep(
-                working_face.rh_joint_brep_face.Brep,
-                Rhino.Geometry.MeshingParameters.Default,
-            )[0]
+            if working_face.mesh is None:
+                working_face.mesh = Rhino.Geometry.Mesh.CreateFromBrep(
+                    working_face.rh_joint_brep_face.Brep,
+                    Rhino.Geometry.MeshingParameters.Default,
+                )[0]
+                working_face.mesh.Subdivide()
+            mesh = working_face.mesh
             normal = working_face.rh_normal
             max_stress = 0.0
             location_of_max_stress = None
+            for mesh_face in mesh.Faces:
+                if mesh_face.IsQuad:
+                    v0 = mesh.Vertices[mesh_face.A]
+                    v1 = mesh.Vertices[mesh_face.B]
+                    v2 = mesh.Vertices[mesh_face.C]
+                    v3 = mesh.Vertices[mesh_face.D]
+                    centroid = geometry.Point(
+                        x=(v0.X + v1.X + v2.X + v3.X) / 4,
+                        y=(v0.Y + v1.Y + v2.Y + v3.Y) / 4,
+                        z=(v0.Z + v1.Z + v2.Z + v3.Z) / 4,
+                    )
+                    mesh_from_face = Rhino.Geometry.Mesh()
+                    mesh_from_face.Vertices.Add(v0)
+                    mesh_from_face.Vertices.Add(v1)
+                    mesh_from_face.Vertices.Add(v2)
+                    mesh_from_face.Vertices.Add(v3)
+                    mesh_from_face.Faces.AddFace(0, 1, 2, 3)
+                    area = Rhino.Geometry.AreaMassProperties.Compute(
+                        mesh_from_face, True, False, False, False
+                    ).Area
+
+                else:
+                    v0 = mesh.Vertices[mesh_face.A]
+                    v1 = mesh.Vertices[mesh_face.B]
+                    v2 = mesh.Vertices[mesh_face.C]
+                    centroid = geometry.Point(
+                        x=(v0.X + v1.X + v2.X) / 3,
+                        y=(v0.Y + v1.Y + v2.Y) / 3,
+                        z=(v0.Z + v1.Z + v2.Z) / 3,
+                    )
+                    mesh_from_face = Rhino.Geometry.Mesh()
+                    mesh_from_face.Vertices.Add(v0)
+                    mesh_from_face.Vertices.Add(v1)
+                    mesh_from_face.Vertices.Add(v2)
+                    mesh_from_face.Faces.AddFace(0, 1, 2)
+                    area = Rhino.Geometry.AreaMassProperties.Compute(
+                        mesh_from_face, True, False, False, False
+                    ).Area
+
+                d = Rhino.Geometry.Vector3d(
+                    self.rotation_point.x - centroid.x,
+                    self.rotation_point.y - centroid.y,
+                    self.rotation_point.z - centroid.z,
+                )
+
+                d_perp = d - (d * normal) * normal
+
+                sigma = (
+                    math.tan(psi)
+                    * Rhino.Geometry.Vector3d.CrossProduct(d_perp, normal).Length
+                    / working_face.effective_depth
+                ) * working_face.Young_modulus
+                if sigma > max_stress:
+                    max_stress = sigma
+                    location_of_max_stress = centroid
+                stress_resultant += geometry.Vector.from_vector_3d(
+                    normal * (sigma * area)
+                )
+            working_face.max_stress = max_stress
+            working_face.location_of_max_stress = location_of_max_stress
+        self.stress_resultant = stress_resultant
+
+    def colorise_mesh_by_stress(self):
+        """
+        Colors the mesh of each working face based on the computed stress distribution.
+        """
+        absolute_max_stress = max(
+            working_face.max_stress for working_face in self.working_faces
+        )
+        psi = self.moment_vector.norm() / self.k_value
+        for working_face in self.working_faces:
+            normal = working_face.rh_normal
+            if working_face.mesh is None:
+                working_face.mesh = Rhino.Geometry.Mesh.CreateFromBrep(
+                    working_face.rh_joint_brep_face.Brep,
+                    Rhino.Geometry.MeshingParameters.Default,
+                )[0]
+                working_face.mesh.Subdivide()
+            mesh = working_face.mesh
+            mesh.VertexColors.CreateMonotoneMesh(
+                Rhino.Display.ColorRGBA(255, 255, 255, 255)
+            )
             for mesh_face in mesh.Faces:
                 if mesh_face.IsQuad:
                     v0 = mesh.Vertices[mesh_face.A]
@@ -192,7 +284,6 @@ class Joint:
                         y=(v0.Y + v1.Y + v2.Y) / 3,
                         z=(v0.Z + v1.Z + v2.Z) / 3,
                     )
-
                 d = Rhino.Geometry.Vector3d(
                     self.rotation_point.x - centroid.x,
                     self.rotation_point.y - centroid.y,
@@ -206,13 +297,19 @@ class Joint:
                     * Rhino.Geometry.Vector3d.CrossProduct(d_perp, normal).Length
                     / working_face.effective_depth
                 ) * working_face.Young_modulus
-                if sigma > max_stress:
-                    max_stress = sigma
-                    location_of_max_stress = centroid
-            working_face.max_stress = max_stress
-            working_face.location_of_max_stress = location_of_max_stress
+                normalized_stress = (
+                    sigma / absolute_max_stress if absolute_max_stress > 0 else 0
+                )
+                color = Rhino.Display.ColorHSL(
+                    1 - normalized_stress,  # Hue
+                    1,  # Saturation
+                    0.5,  # Lightness
+                ).ToArgbColor()
+
+                mesh.VertexColors.SetColor(mesh_face, color)
 
     def __post_init__(self):
         self.detect_working_faces()
         self.compute_joint_rigidity()
         self.compute_stress_distribution()
+        self.colorise_mesh_by_stress()
