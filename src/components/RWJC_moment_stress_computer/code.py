@@ -31,16 +31,16 @@ class RWJCMomentCalculator(component):
             rotation_point=geometry.Point.from_Point3d(anchor_point),
             wood_direction=geometry.Vector.from_vector_3d(wood_direction),
         )
-        return my_joint.working_faces
+        return my_joint
 
 
 if __name__ == "__main__":
     c = RWJCMomentCalculator()
     catch = c.RunScript(brep_faces, moment_vector, anchor_point, wood_direction)  # noqa
     # catch = [working_face.rh_joint_brep_face for working_face in catch]
-    max_stresses = [working_face.max_stress for working_face in catch]
+    max_stresses = [working_face.max_stress for working_face in catch.working_faces]
     max_stress_locations = [
-        working_face.location_of_max_stress for working_face in catch
+        working_face.location_of_max_stress for working_face in catch.working_faces
     ]
     text_dots = [
         Rhino.Geometry.TextDot(
@@ -48,4 +48,8 @@ if __name__ == "__main__":
         )
         for max_stress, location in zip(max_stresses, max_stress_locations)
     ]
-    working_face_breps = [working_face.rh_joint_brep_face for working_face in catch]
+    working_face_breps = [
+        working_face.rh_joint_brep_face for working_face in catch.working_faces
+    ]
+    resultant = catch.stress_resultant.to_vector_3d()
+    meshes = [working_face.mesh for working_face in catch.working_faces]
