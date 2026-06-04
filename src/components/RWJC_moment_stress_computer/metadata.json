@@ -38,8 +38,8 @@
                 "typeHintID": "vector"
             },
             {
-                "name": "rotation_center",
-                "nickname": "rotation_center",
+                "name": "anchor_point",
+                "nickname": "anchor_point",
                 "description": "The point around which the moment vector is applied.",
                 "optional": false,
                 "allowTreeAccess": true,
@@ -47,38 +47,58 @@
                 "scriptParamAccess": "item",
                 "wireDisplay": "default",
                 "sourceCount": 0,
-                "typeHintID": "float"
+                "typeHintID": "point"
+            },
+            {
+                "name": "wood_direction",
+                "nickname": "wood_direction",
+                "description": "The direction of the wood grain, used for determining the orthotropic material properties.",
+                "optional": false,
+                "allowTreeAccess": true,
+                "showTypeHints": true,
+                "scriptParamAccess": "item",
+                "wireDisplay": "default",
+                "sourceCount": 0,
+                "typeHintID": "vector"
             }
         ],
         "outputParameters": [
             {
-                "name": "resultant_vectors",
-                "nickname": "resultant_vectors",
-                "description": "The resultant forces on the joint faces.",
+                "name": "working_face_breps",
+                "nickname": "working_face_breps",
+                "description": "The activated brep faces of the joint.",
                 "optional": false,
                 "sourceCount": 0,
                 "graft": false
             },
             {
-                "name": "anchors",
-                "nickname": "anchors",
-                "description": "The anchor points for the resultant forces.",
+                "name": "text_dots",
+                "nickname": "text_dots",
+                "description": "The text dots locating the maximum stresses on the joint faces.",
                 "optional": false,
                 "sourceCount": 0,
                 "graft": false
             },
             {
-                "name": "stress_distribution",
-                "nickname": "stress_distribution",
-                "description": "The stress distribution on the joint faces.",
+                "name": "resultant_forces",
+                "nickname": "resultant_forces",
+                "description": "The resultant forces from the stresses on the joint faces.",
                 "optional": false,
                 "sourceCount": 0,
                 "graft": false
             },
             {
-                "name": "sigma_maxs",
-                "nickname": "sigma_maxs",
-                "description": "The maximum stress values on the respective joint faces.",
+                "name": "resultant_moments",
+                "nickname": "resultant_moments",
+                "description": "The resultant moments from the stresses on the joint faces.",
+                "optional": false,
+                "sourceCount": 0,
+                "graft": false
+            },
+            {
+                "name": "meshes",
+                "nickname": "meshes",
+                "description": "The meshes representing the joint faces.",
                 "optional": false,
                 "sourceCount": 0,
                 "graft": false

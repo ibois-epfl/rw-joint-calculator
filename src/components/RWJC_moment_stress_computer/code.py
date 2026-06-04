@@ -31,26 +31,30 @@ class RWJCMomentCalculator(component):
             rotation_point=geometry.Point.from_Point3d(anchor_point),
             wood_direction=geometry.Vector.from_vector_3d(wood_direction),
         )
-        return my_joint
 
-
-if __name__ == "__main__":
-    c = RWJCMomentCalculator()
-    catch = c.RunScript(brep_faces, moment_vector, anchor_point, wood_direction)  # noqa
-    # catch = [working_face.rh_joint_brep_face for working_face in catch]
-    max_stresses = [working_face.max_stress for working_face in catch.working_faces]
-    max_stress_locations = [
-        working_face.location_of_max_stress for working_face in catch.working_faces
-    ]
-    text_dots = [
-        Rhino.Geometry.TextDot(
-            f"Max Stress: {max_stress / 1e6:.2f} MPa", location.to_point_3d()
-        )
-        for max_stress, location in zip(max_stresses, max_stress_locations)
-    ]
-    working_face_breps = [
-        working_face.rh_joint_brep_face for working_face in catch.working_faces
-    ]
-    resultant = catch.stress_resultant.to_vector_3d()
-    meshes = [working_face.mesh for working_face in catch.working_faces]
-    print(f"moment resultant: {catch.moment_resultant}")
+        working_face_breps = [
+            working_face.rh_joint_brep_face for working_face in my_joint.working_faces
+        ]
+        max_stresses = [
+            working_face.max_stress for working_face in my_joint.working_faces
+        ]
+        max_stress_locations = [
+            working_face.location_of_max_stress
+            for working_face in my_joint.working_faces
+        ]
+        text_dots = [
+            Rhino.Geometry.TextDot(
+                f"Max Stress: {max_stress / 1e6:.2f} MPa", location.to_point_3d()
+            )
+            for max_stress, location in zip(max_stresses, max_stress_locations)
+        ]
+        resultant_force = my_joint.stress_resultant.to_vector_3d()
+        resultant_moment = my_joint.moment_resultant.to_vector_3d()
+        meshes = [working_face.mesh for working_face in my_joint.working_faces]
+        return [
+            working_face_breps,
+            text_dots,
+            resultant_force,
+            resultant_moment,
+            meshes,
+        ]
