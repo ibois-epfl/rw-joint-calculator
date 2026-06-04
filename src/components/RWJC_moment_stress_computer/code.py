@@ -53,3 +53,4 @@ if __name__ == "__main__":
     ]
     resultant = catch.stress_resultant.to_vector_3d()
     meshes = [working_face.mesh for working_face in catch.working_faces]
+    print(f"moment resultant: {catch.moment_resultant}")

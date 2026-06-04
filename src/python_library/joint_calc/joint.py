@@ -21,6 +21,7 @@ class Joint:
     inertia_along_moment_axis: geometry.Vector = None
     k_value: float = None
     stress_resultant: geometry.Vector = None
+    moment_resultant: geometry.Vector = None
 
     def detect_working_faces(self):
         self.working_faces = []
@@ -170,7 +171,7 @@ class Joint:
         )
 
         stress_resultant = geometry.Vector(0, 0, 0)
-
+        moment_resultant = geometry.Vector(0, 0, 0)
         for working_face in self.working_faces:
             if working_face.mesh is None:
                 working_face.mesh = Rhino.Geometry.Mesh.CreateFromBrep(
@@ -240,9 +241,20 @@ class Joint:
                 stress_resultant += geometry.Vector.from_vector_3d(
                     normal * (sigma * area)
                 )
+                moment_resultant += geometry.Vector.from_vector_3d(
+                    Rhino.Geometry.Vector3d.CrossProduct(
+                        Rhino.Geometry.Vector3d(
+                            centroid.x - self.rotation_point.x,
+                            centroid.y - self.rotation_point.y,
+                            centroid.z - self.rotation_point.z,
+                        ),
+                        normal * (sigma * area),
+                    )
+                )
             working_face.max_stress = max_stress
             working_face.location_of_max_stress = location_of_max_stress
         self.stress_resultant = stress_resultant
+        self.moment_resultant = moment_resultant
 
     def colorise_mesh_by_stress(self):
         """
