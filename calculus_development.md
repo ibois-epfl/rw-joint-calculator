@@ -1,5 +1,7 @@
 # analytical analysis of roundwood joint
 
+## Moment-induced stresses
+
 ![illustration](./assets/2026_06_01_joint_drawing_with_annotations.png)
 
 Under rotation around the m vector, the stresses $\sigma$ on a $dA$ element surface participate to the moment around $\vec{m}$ by:
@@ -42,3 +44,21 @@ The value of $E_i$ will depend on fibre orientation on the joint face and accord
 $$ E_{\gamma} = \frac{E_{\parallel} * E_{\perp}}{E_{\parallel} * \sin(\gamma)^2 + E_{\perp} * \cos(\gamma)^2} $$
 
 With $\gamma$ the angle between $\vec{n}$ and the wood fibre, which can be approximated with the beam axis.
+
+
+## Axial-force-induced stresses
+
+Assuming a single displacement vector $\vec{d}$ is applied to the faces, we can state that the stresses on face i are related to that global displacement $\vec{d}$ by the relation:
+
+$$ \sigma_i = ||\vec{d}|| * \cos{\alpha}_i * \frac{E_i}{L_i} $$
+Where $\alpha_i$ is the angle between the normal to face i and the displacement vector $\vec{d}$.
+With the total force on the face i $\vec{F_i}$:
+$$ \vec{F_i} = \sigma_i * A_i * \vec{n_i} $$
+
+We thus have the relation between the applied force $\vec{F}$ and the individual face forces $\vec{F_i}$:
+
+$$ ||\vec{F}|| = \sum_i{\sigma_i * A_i * \cos{\alpha_i}} $$
+$$ ||\vec{F}|| = ||\vec{d}|| \sum_i{\frac{E_i}{L_i}* A_i * \cos^2{\alpha_i}} $$
+$$ ||\vec{d}|| = \frac{||\vec{F}||}{\sum_i{\frac{E_i}{L_i}* A_i * \cos^2{\alpha_i}}} $$
+And therefore:
+$$ \sigma_i = \frac{||\vec{F}|| * \cos{\alpha_i} * \frac{E_i}{L_i}}{\sum_j{\frac{E_j}{L_j} * A_j * \cos^2{\alpha_j}}} $$
