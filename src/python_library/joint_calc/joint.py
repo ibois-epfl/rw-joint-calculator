@@ -17,14 +17,14 @@ class Joint:
     moment_vector: geometry.Vector
     rotation_point: geometry.Point
     wood_direction: geometry.Vector
-    working_faces: list[face.JointFace] = None
+    moment_working_faces: list[face.JointFace] = None
     inertia_along_moment_axis: geometry.Vector = None
     k_value: float = None
     stress_resultant: geometry.Vector = None
     moment_resultant: geometry.Vector = None
 
-    def detect_working_faces(self):
-        self.working_faces = []
+    def detect_moment_working_faces(self):
+        self.moment_working_faces = []
         for joint_face in self.original_faces:
             plane = Rhino.Geometry.Plane(
                 joint_face.centroid.to_point_3d(), joint_face.rh_normal
@@ -60,7 +60,7 @@ class Joint:
                             parent_joint_id=self.id,
                             rh_joint_brep_face=r.Faces[0],
                         )
-                        self.working_faces.append(wf)
+                        self.moment_working_faces.append(wf)
             else:
                 centroid = joint_face.centroid
                 oriented_normal = joint_face.rh_normal
@@ -73,14 +73,14 @@ class Joint:
                     rot_point_to_centroid, oriented_normal
                 )
                 if moment_participation * self.moment_vector.to_vector_3d() < 0:
-                    self.working_faces.append(joint_face)
+                    self.moment_working_faces.append(joint_face)
 
     def compute_joint_rigidity(self):
         """
         Computes the K value of the joint based on the working faces and their inertia along the moment axis.
         """
         K = 0.0
-        for working_face in self.working_faces:
+        for working_face in self.moment_working_faces:
             if working_face.mesh is None:
                 working_face.mesh = Rhino.Geometry.Mesh.CreateFromBrep(
                     working_face.rh_joint_brep_face.Brep,
@@ -172,7 +172,7 @@ class Joint:
 
         stress_resultant = geometry.Vector(0, 0, 0)
         moment_resultant = geometry.Vector(0, 0, 0)
-        for working_face in self.working_faces:
+        for working_face in self.moment_working_faces:
             if working_face.mesh is None:
                 working_face.mesh = Rhino.Geometry.Mesh.CreateFromBrep(
                     working_face.rh_joint_brep_face.Brep,
@@ -261,10 +261,10 @@ class Joint:
         Colors the mesh of each working face based on the computed stress distribution.
         """
         absolute_max_stress = max(
-            working_face.max_stress for working_face in self.working_faces
+            working_face.max_stress for working_face in self.moment_working_faces
         )
         psi = self.moment_vector.norm() / self.k_value
-        for working_face in self.working_faces:
+        for working_face in self.moment_working_faces:
             normal = working_face.rh_normal
             if working_face.mesh is None:
                 working_face.mesh = Rhino.Geometry.Mesh.CreateFromBrep(
@@ -321,7 +321,7 @@ class Joint:
                 mesh.VertexColors.SetColor(mesh_face, color)
 
     def __post_init__(self):
-        self.detect_working_faces()
+        self.detect_moment_working_faces()
         self.compute_joint_rigidity()
         self.compute_stress_distribution()
         self.colorise_mesh_by_stress()

@@ -33,14 +33,15 @@ class RWJCMomentCalculator(component):
         )
 
         working_face_breps = [
-            working_face.rh_joint_brep_face for working_face in my_joint.working_faces
+            working_face.rh_joint_brep_face
+            for working_face in my_joint.moment_working_faces
         ]
         max_stresses = [
-            working_face.max_stress for working_face in my_joint.working_faces
+            working_face.max_stress for working_face in my_joint.moment_working_faces
         ]
         max_stress_locations = [
             working_face.location_of_max_stress
-            for working_face in my_joint.working_faces
+            for working_face in my_joint.moment_working_faces
         ]
         text_dots = [
             Rhino.Geometry.TextDot(
@@ -50,7 +51,7 @@ class RWJCMomentCalculator(component):
         ]
         resultant_force = my_joint.stress_resultant.to_vector_3d()
         resultant_moment = my_joint.moment_resultant.to_vector_3d()
-        meshes = [working_face.mesh for working_face in my_joint.working_faces]
+        meshes = [working_face.mesh for working_face in my_joint.moment_working_faces]
         return [
             working_face_breps,
             text_dots,
