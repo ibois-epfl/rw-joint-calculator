@@ -1,3 +1,5 @@
+"""computes the stresses in a roundwood joint created by a moment"""
+
 import System
 
 import Rhino
@@ -10,7 +12,7 @@ from joint_calc import face, joint, geometry
 class RWJCMomentCalculator(component):
     def RunScript(
         self,
-        brep_faces: System.Collections.Generic.List[Rhino.Geometry.BrepFace],
+        brep_faces: System.Collections.Generic.List[Rhino.Geometry.Brep],
         moment_vector: Rhino.Geometry.Vector3d,
         anchor_point: Rhino.Geometry.Point3d,
         wood_direction: Rhino.Geometry.Vector3d,
@@ -28,6 +30,9 @@ class RWJCMomentCalculator(component):
             id=0,
             original_faces=joint_faces,
             moment_vector=geometry.Vector.from_vector_3d(moment_vector),
+            axial_force_vector=geometry.Vector.from_vector_3d(
+                Rhino.Geometry.Vector3d(0, 0, -1000)
+            ),
             rotation_point=geometry.Point.from_Point3d(anchor_point),
             wood_direction=geometry.Vector.from_vector_3d(wood_direction),
         )
@@ -49,6 +54,13 @@ class RWJCMomentCalculator(component):
             )
             for max_stress, location in zip(max_stresses, max_stress_locations)
         ]
+        for axial_face in my_joint.axial_force_working_faces:
+            text_dots.append(
+                Rhino.Geometry.TextDot(
+                    f"axial stresses: {axial_face.axial_stress / 1e6:.2f} MPa",
+                    axial_face.centroid.to_point_3d(),
+                )
+            )
         resultant_force = my_joint.stress_resultant.to_vector_3d()
         resultant_moment = my_joint.moment_resultant.to_vector_3d()
         meshes = [working_face.mesh for working_face in my_joint.moment_working_faces]

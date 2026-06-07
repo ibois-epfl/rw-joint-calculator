@@ -15,9 +15,11 @@ class Joint:
     id: int
     original_faces: list[face.JointFace]
     moment_vector: geometry.Vector
+    axial_force_vector: geometry.Vector
     rotation_point: geometry.Point
     wood_direction: geometry.Vector
     moment_working_faces: list[face.JointFace] = None
+    axial_force_working_faces: list[face.JointFace] = None
     inertia_along_moment_axis: geometry.Vector = None
     k_value: float = None
     stress_resultant: geometry.Vector = None
@@ -74,6 +76,13 @@ class Joint:
                 )
                 if moment_participation * self.moment_vector.to_vector_3d() < 0:
                     self.moment_working_faces.append(joint_face)
+
+    def detect_axial_force_working_faces(self):
+        self.axial_force_working_faces = []
+        for joint_face in self.original_faces:
+            normal = joint_face.rh_normal
+            if normal * self.axial_force_vector.to_vector_3d() < 0:
+                self.axial_force_working_faces.append(joint_face)
 
     def compute_joint_rigidity(self):
         """
@@ -158,7 +167,7 @@ class Joint:
         # text_dot = Rhino.Geometry.TextDot(f"K value: {K:.2f}\nE:kNm / radians", self.rotation_point.to_point_3d())
         # Rhino.RhinoDoc.ActiveDoc.Objects.AddTextDot(text_dot)
 
-    def compute_stress_distribution(self):
+    def compute_moment_stress_distribution(self):
         """
         Computes the stress distribution on the working faces based on the applied moment and the computed K value.
         """
@@ -256,6 +265,56 @@ class Joint:
         self.stress_resultant = stress_resultant
         self.moment_resultant = moment_resultant
 
+    def compute_axial_force_stress_distribution(self):
+        """
+        Computes the stress distribution on the working faces based on the applied axial force and the computed K value.
+        """
+        for working_face in self.axial_force_working_faces:
+            normal = working_face.rh_normal
+            area = working_face.area
+            alpha = math.acos(
+                normal
+                * self.axial_force_vector.to_vector_3d()
+                / self.axial_force_vector.norm()
+            )
+            effective_depth = math.sqrt(area)
+            E = utils.compute_young_modulus(
+                grain_orientation=self.wood_direction,
+                face_normal=geometry.Vector.from_vector_3d(working_face.rh_normal),
+                E0=10e9,  # Example value for E0 in Pascals
+                E90=300e6,  # Example value for E90 in Pascals
+            )
+            nomin = (
+                -1
+                * (self.axial_force_vector.norm() * math.cos(alpha))
+                * E
+                / effective_depth
+            )
+            denom = 0.0
+            for other_face in self.axial_force_working_faces:
+                other_normal = other_face.rh_normal
+                other_area = other_face.area
+                other_alpha = math.acos(
+                    other_normal
+                    * self.axial_force_vector.to_vector_3d()
+                    / self.axial_force_vector.norm()
+                )
+                other_E = utils.compute_young_modulus(
+                    grain_orientation=self.wood_direction,
+                    face_normal=geometry.Vector.from_vector_3d(other_face.rh_normal),
+                    E0=10e9,  # Example value for E0 in Pascals
+                    E90=300e6,  # Example value for E90 in Pascals
+                )
+                other_effective_depth = math.sqrt(other_area)
+                denom += (
+                    (math.cos(other_alpha) ** 2)
+                    * other_E
+                    * other_area
+                    / other_effective_depth
+                )
+            sigma = nomin / denom
+            working_face.axial_stress = sigma
+
     def colorise_mesh_by_stress(self):
         """
         Colors the mesh of each working face based on the computed stress distribution.
@@ -322,6 +381,8 @@ class Joint:
 
     def __post_init__(self):
         self.detect_moment_working_faces()
+        self.detect_axial_force_working_faces()
         self.compute_joint_rigidity()
-        self.compute_stress_distribution()
+        self.compute_moment_stress_distribution()
+        self.compute_axial_force_stress_distribution()
         self.colorise_mesh_by_stress()
