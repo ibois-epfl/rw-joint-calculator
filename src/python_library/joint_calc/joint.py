@@ -269,6 +269,7 @@ class Joint:
         """
         Computes the stress distribution on the working faces based on the applied axial force and the computed K value.
         """
+        resultant_force = geometry.Vector(0, 0, 0)
         for working_face in self.axial_force_working_faces:
             normal = working_face.rh_normal
             area = working_face.area
@@ -314,6 +315,8 @@ class Joint:
                 )
             sigma = nomin / denom
             working_face.axial_stress = sigma
+            resultant_force += geometry.Vector.from_vector_3d(normal * (sigma * area))
+        self.stress_resultant += resultant_force
 
     def colorise_mesh_by_stress(self):
         """
