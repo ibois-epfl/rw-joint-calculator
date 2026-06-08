@@ -16,6 +16,7 @@ class RWJCMomentCalculator(component):
         moment_vector: Rhino.Geometry.Vector3d,
         anchor_point: Rhino.Geometry.Point3d,
         wood_direction: Rhino.Geometry.Vector3d,
+        axial_force,
     ):
         joint_faces = []
         for i, brep_face in enumerate(brep_faces):
@@ -30,9 +31,7 @@ class RWJCMomentCalculator(component):
             id=0,
             original_faces=joint_faces,
             moment_vector=geometry.Vector.from_vector_3d(moment_vector),
-            axial_force_vector=geometry.Vector.from_vector_3d(
-                Rhino.Geometry.Vector3d(0, 0, -1000)
-            ),
+            axial_force_vector=geometry.Vector.from_vector_3d(axial_force),
             rotation_point=geometry.Point.from_Point3d(anchor_point),
             wood_direction=geometry.Vector.from_vector_3d(wood_direction),
         )
@@ -64,6 +63,8 @@ class RWJCMomentCalculator(component):
         resultant_force = my_joint.stress_resultant.to_vector_3d()
         resultant_moment = my_joint.moment_resultant.to_vector_3d()
         meshes = [working_face.mesh for working_face in my_joint.moment_working_faces]
+        for axial_face in my_joint.axial_force_working_faces:
+            meshes.append(axial_face.mesh)
         return [
             working_face_breps,
             text_dots,

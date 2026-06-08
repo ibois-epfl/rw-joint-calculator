@@ -81,7 +81,12 @@ class Joint:
         self.axial_force_working_faces = []
         for joint_face in self.original_faces:
             normal = joint_face.rh_normal
-            if normal * self.axial_force_vector.to_vector_3d() < 0:
+            if (
+                normal
+                * self.axial_force_vector.to_vector_3d()
+                / self.axial_force_vector.norm()
+                < -0.01
+            ):
                 self.axial_force_working_faces.append(joint_face)
 
     def compute_joint_rigidity(self):
@@ -323,18 +328,19 @@ class Joint:
         Colors the mesh of each working face based on the computed stress distribution.
         """
         absolute_max_stress = max(
-            working_face.max_stress for working_face in self.moment_working_faces
+            moment_working_face.max_stress
+            for moment_working_face in self.moment_working_faces
         )
         psi = self.moment_vector.norm() / self.k_value
-        for working_face in self.moment_working_faces:
-            normal = working_face.rh_normal
-            if working_face.mesh is None:
-                working_face.mesh = Rhino.Geometry.Mesh.CreateFromBrep(
-                    working_face.rh_joint_brep_face.Brep,
+        for moment_working_face in self.moment_working_faces:
+            normal = moment_working_face.rh_normal
+            if moment_working_face.mesh is None:
+                moment_working_face.mesh = Rhino.Geometry.Mesh.CreateFromBrep(
+                    moment_working_face.rh_joint_brep_face.Brep,
                     Rhino.Geometry.MeshingParameters.Default,
                 )[0]
-                working_face.mesh.Subdivide()
-            mesh = working_face.mesh
+                moment_working_face.mesh.Subdivide()
+            mesh = moment_working_face.mesh
             mesh.VertexColors.CreateMonotoneMesh(
                 Rhino.Display.ColorRGBA(255, 255, 255, 255)
             )
@@ -369,8 +375,8 @@ class Joint:
                 sigma = (
                     math.tan(psi)
                     * Rhino.Geometry.Vector3d.CrossProduct(d_perp, normal).Length
-                    / working_face.effective_depth
-                ) * working_face.Young_modulus
+                    / moment_working_face.effective_depth
+                ) * moment_working_face.Young_modulus
                 normalized_stress = (
                     sigma / absolute_max_stress if absolute_max_stress > 0 else 0
                 )
@@ -381,6 +387,22 @@ class Joint:
                 ).ToArgbColor()
 
                 mesh.VertexColors.SetColor(mesh_face, color)
+
+        for axial_working_face in self.axial_force_working_faces:
+            color = Rhino.Display.ColorHSL(
+                1
+                - min(axial_working_face.axial_stress / absolute_max_stress, 1),  # Hue
+                1,  # Saturation
+                0.5,  # Lightness
+            ).ToArgbColor()
+            if axial_working_face.mesh is None:
+                axial_working_face.mesh = Rhino.Geometry.Mesh.CreateFromBrep(
+                    axial_working_face.rh_joint_brep_face.Brep,
+                    Rhino.Geometry.MeshingParameters.Default,
+                )[0]
+                axial_working_face.mesh.Subdivide()
+            mesh = axial_working_face.mesh
+            mesh.VertexColors.CreateMonotoneMesh(color)
 
     def __post_init__(self):
         self.detect_moment_working_faces()
