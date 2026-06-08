@@ -48,7 +48,9 @@ With $\gamma$ the angle between $\vec{n}$ and the wood fibre, which can be appro
 
 ## Axial-force-induced stresses
 
-Assuming a single displacement vector $\vec{d}$ is applied to the faces, we can state that the stresses on face i are related to that global displacement $\vec{d}$ by the relation:
+For the stresses induced by the axial forces applied to the node, we assume that only the faces with normals that have a negative dot product with the force are contributing to the resistance (no traction, only compression). Additionally, we neglect all friction on the faces in the resistance to that axial force.
+
+Assuming the joint undergoes a uniform relative displacement $\vec{d}$ the normal compression of each active face is given by the projection of $\vec{d}$ onto the face normal. We can therefore state that the stresses on face i are related to that global displacement $\vec{d}$ by the relation:
 
 $$ \sigma_i = ||\vec{d}|| * \cos{\alpha}_i * \frac{E_i}{L_i} $$
 Where $\alpha_i$ is the angle between the normal to face i and the displacement vector $\vec{d}$.
@@ -57,8 +59,8 @@ $$ \vec{F_i} = \sigma_i * A_i * \vec{n_i} $$
 
 We thus have the relation between the applied force $\vec{F}$ and the individual face forces $\vec{F_i}$:
 
-$$ ||\vec{F}|| = \sum_i{\sigma_i * A_i * \cos{\alpha_i}} $$
+$$ ||\vec{F}|| = \sum_i{\sigma_i * A_i * |\cos{\alpha_i}}| $$
 $$ ||\vec{F}|| = ||\vec{d}|| \sum_i{\frac{E_i}{L_i}* A_i * \cos^2{\alpha_i}} $$
 $$ ||\vec{d}|| = \frac{||\vec{F}||}{\sum_i{\frac{E_i}{L_i}* A_i * \cos^2{\alpha_i}}} $$
 And therefore:
-$$ \sigma_i = \frac{||\vec{F}|| * \cos{\alpha_i} * \frac{E_i}{L_i}}{\sum_j{\frac{E_j}{L_j} * A_j * \cos^2{\alpha_j}}} $$
+$$ \sigma_i = \frac{||\vec{F}|| * |\cos{\alpha_i}| * \frac{E_i}{L_i}}{\sum_j{\frac{E_j}{L_j} * A_j * \cos^2{\alpha_j}}} $$
