@@ -19,7 +19,6 @@ class JointFace:
     id: int
     parent_joint_id: int
     rh_joint_brep_face: Rhino.Geometry.BrepFace
-    resultant_location: geometry.Point = None  # The location of the resultant force vector that will be applied on this face
     max_stress: float = 0.0
     effective_depth: float = None
     Young_modulus: float = None
