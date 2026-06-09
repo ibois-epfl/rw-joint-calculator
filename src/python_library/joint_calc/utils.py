@@ -38,4 +38,10 @@ def compute_young_modulus(
     elif theta == math.pi / 2:
         return E90
     else:
-        return (E0 * E90) / (E0 * math.sin(theta) ** 2 + E90 * math.cos(theta) ** 2)
+        if theta > math.pi / 2:
+            theta = math.pi - theta
+        E = (E0 * E90) / (E0 * math.sin(theta) ** 2 + E90 * math.cos(theta) ** 2)
+        print(
+            f"Computing Young's modulus of {E / 1e9:.2f} GPa with theta: {math.degrees(theta):.2f} degrees"
+        )
+        return E
