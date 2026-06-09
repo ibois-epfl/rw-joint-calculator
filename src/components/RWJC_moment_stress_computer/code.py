@@ -16,7 +16,7 @@ class RWJCMomentCalculator(component):
         moment_vector: Rhino.Geometry.Vector3d,
         anchor_point: Rhino.Geometry.Point3d,
         wood_direction: Rhino.Geometry.Vector3d,
-        axial_force,
+        axial_force: Rhino.Geometry.Vector3d,
     ):
         joint_faces = []
         for i, brep_face in enumerate(brep_faces):
@@ -37,34 +37,35 @@ class RWJCMomentCalculator(component):
         )
 
         working_face_breps = [
-            working_face.rh_joint_brep_face
-            for working_face in my_joint.moment_working_faces
+            joint_face.bending_subface.rh_joint_brep_face
+            for joint_face in my_joint.original_faces
+            if joint_face.bending_subface is not None
         ]
-        max_stresses = [
-            working_face.max_stress for working_face in my_joint.moment_working_faces
-        ]
-        max_stress_locations = [
-            working_face.location_of_max_stress
-            for working_face in my_joint.moment_working_faces
-        ]
+        max_stresses = []
+        Es = []
+        max_stress_locations = []
+        for joint_face in my_joint.original_faces:
+            max_stress = joint_face.cumulated_stresses
+            if joint_face.bending_subface is not None:
+                max_stress_location = joint_face.bending_subface.location_of_max_stress
+                max_stress_locations.append(max_stress_location)
+                Es.append(joint_face.Young_modulus)
+                max_stresses.append(max_stress)
+            elif joint_face.axial_subface is not None:
+                max_stress_location = joint_face.axial_subface.centroid
+                max_stress_locations.append(max_stress_location)
+                Es.append(joint_face.Young_modulus)
+                max_stresses.append(max_stress)
         text_dots = [
             Rhino.Geometry.TextDot(
-                f"Max Stress: {max_stress / 1e6:.2f} MPa", location.to_point_3d()
+                f"Max Stress: {max_stress / 1e6:.2f} MPa and E: {E / 1e9:.2f} GPa",
+                location.to_point_3d(),
             )
-            for max_stress, location in zip(max_stresses, max_stress_locations)
+            for max_stress, E, location in zip(max_stresses, Es, max_stress_locations)
         ]
-        for axial_face in my_joint.axial_force_working_faces:
-            text_dots.append(
-                Rhino.Geometry.TextDot(
-                    f"axial stresses: {axial_face.axial_stress / 1e6:.2f} MPa",
-                    axial_face.centroid.to_point_3d(),
-                )
-            )
         resultant_force = my_joint.stress_resultant.to_vector_3d()
         resultant_moment = my_joint.moment_resultant.to_vector_3d()
-        meshes = [working_face.mesh for working_face in my_joint.moment_working_faces]
-        for axial_face in my_joint.axial_force_working_faces:
-            meshes.append(axial_face.mesh)
+        meshes = my_joint.stress_display_meshes
         return [
             working_face_breps,
             text_dots,
@@ -72,3 +73,14 @@ class RWJCMomentCalculator(component):
             resultant_moment,
             meshes,
         ]
+
+
+# if __name__ == "__main__":
+#     component = RWJCMomentCalculator()
+#     working_face_breps, text_dots, resultant_force, resultant_moment, meshes = component.RunScript(
+#         brep_faces,
+#         moment_vector,
+#         anchor_point,
+#         wood_direction,
+#         axial_force,
+#     )
