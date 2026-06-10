@@ -458,11 +458,6 @@ class Joint:
                 E0=10e9,  # Example value for E0 in Pascals
                 E90=300e6,  # Example value for E90 in Pascals
             )
-            text_dot = Rhino.Geometry.TextDot(
-                f"E: {joint_face.Young_modulus / 1e9:.2f} GPa",
-                joint_face.centroid.to_point_3d(),
-            )
-            Rhino.RhinoDoc.ActiveDoc.Objects.AddTextDot(text_dot)
         self.detect_moment_working_faces()
         self.detect_axial_force_working_faces()
         self.compute_joint_rigidity()
