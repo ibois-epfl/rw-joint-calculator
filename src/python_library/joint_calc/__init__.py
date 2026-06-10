@@ -1,3 +1,5 @@
-__version__ = "0.0.0"
+__version__ = "0.0.2"
 __author__ = "Damien Gilliard"
 __doc__ = "A basic Python library for roundwood joint calculations in Rhino8."
+
+# from . import face, geometry, joint, utils
