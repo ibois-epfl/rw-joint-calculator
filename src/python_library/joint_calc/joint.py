@@ -433,8 +433,8 @@ class Joint:
                     else 0
                 )
                 color = Rhino.Display.ColorHSL(
-                    1 - normalized_stress,  # Hue
-                    1,  # Saturation
+                    0,  # Hue
+                    normalized_stress,  # Saturation
                     0.5,  # Lightness
                 ).ToArgbColor()
 
