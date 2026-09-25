@@ -459,8 +459,10 @@ class Joint:
                 E90=300e6,  # Example value for E90 in Pascals
             )
         self.detect_moment_working_faces()
-        self.detect_axial_force_working_faces()
+        if self.axial_force_vector and self.axial_force_vector.norm() > 0:
+            self.detect_axial_force_working_faces()
         self.compute_joint_rigidity()
         self.compute_moment_stress_distribution()
-        self.compute_axial_force_stress_distribution()
+        if self.axial_force_vector and self.axial_force_vector.norm() > 0:
+            self.compute_axial_force_stress_distribution()
         self.colorise_mesh_by_stress()
