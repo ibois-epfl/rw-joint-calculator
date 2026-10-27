@@ -33,8 +33,11 @@ class Joint:
             rotation_axis = Rhino.Geometry.Line(
                 self.rotation_point.to_point_3d(), self.moment_vector.to_vector_3d()
             )
-            rotation_axis.Extend(1, 1)
+            bbox = joint_face.rh_joint_brep_face.GetBoundingBox(True)
+            extension_length = bbox.Diagonal.Length * 2
+            rotation_axis.Extend(extension_length, extension_length)
             rotation_axis.Transform(projection)
+            joint_face.projected_rotation_axis = rotation_axis
             result = joint_face.rh_joint_brep_face.Brep.Split(
                 [rotation_axis.ToNurbsCurve()],
                 Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance,
@@ -46,6 +49,8 @@ class Joint:
                         subface_centroid.to_point_3d()
                     )
                     oriented_normal = r.Faces[0].NormalAt(u, v)
+                    if oriented_normal * joint_face.rh_normal < 0:
+                        oriented_normal.Reverse()
                     rot_point_to_centroid = Rhino.Geometry.Vector3d(
                         subface_centroid.x - self.rotation_point.x,
                         subface_centroid.y - self.rotation_point.y,
@@ -162,17 +167,16 @@ class Joint:
                         mesh_from_face, True, False, False, False
                     ).Area
 
-                d = Rhino.Geometry.Vector3d(
-                    self.rotation_point.x - centroid.x,
-                    self.rotation_point.y - centroid.y,
-                    self.rotation_point.z - centroid.z,
+                moment_axis = self.moment_vector.to_vector_3d()
+                moment_axis.Unitize()
+                r = Rhino.Geometry.Vector3d(
+                    centroid.x - self.rotation_point.x,
+                    centroid.y - self.rotation_point.y,
+                    centroid.z - self.rotation_point.z,
                 )
-                d_perp = d - (d * normal) * normal
-                theta = Rhino.Geometry.Vector3d.VectorAngle(
-                    Rhino.Geometry.Vector3d.CrossProduct(d, normal),
-                    self.moment_vector.to_vector_3d(),
-                )
-                Riemann_sum += area * d_perp.Length**2 * math.cos(theta)
+                lever = moment_axis * Rhino.Geometry.Vector3d.CrossProduct(r, normal)
+                if lever < 0:
+                    Riemann_sum += area * lever**2
             E = working_face.Young_modulus
             working_face.Young_modulus = E
             L = math.sqrt(working_face.area)
@@ -251,22 +255,31 @@ class Joint:
                         mesh_from_face, True, False, False, False
                     ).Area
 
-                d = Rhino.Geometry.Vector3d(
-                    self.rotation_point.x - centroid.x,
-                    self.rotation_point.y - centroid.y,
-                    self.rotation_point.z - centroid.z,
+                moment_axis = self.moment_vector.to_vector_3d()
+                moment_axis.Unitize()
+                r = Rhino.Geometry.Vector3d(
+                    centroid.x - self.rotation_point.x,
+                    centroid.y - self.rotation_point.y,
+                    centroid.z - self.rotation_point.z,
                 )
-
-                d_perp = d - (d * normal) * normal
-
+                lever = moment_axis * Rhino.Geometry.Vector3d.CrossProduct(r, normal)
                 sigma = (
-                    math.tan(psi)
-                    * Rhino.Geometry.Vector3d.CrossProduct(d_perp, normal).Length
+                    psi
+                    * max(0.0, -lever)
                     / working_face.effective_depth
-                ) * working_face.Young_modulus
+                    * working_face.Young_modulus
+                )
                 if sigma > max_stress:
                     max_stress = sigma
                     location_of_max_stress = centroid
+                stress_and_location = (
+                    geometry.Vector.from_vector_3d(normal * sigma),
+                    centroid.to_point_3d(),
+                )
+                if working_face.stresses_and_locations is None:
+                    working_face.stresses_and_locations = [stress_and_location]
+                else:
+                    working_face.stresses_and_locations.append(stress_and_location)
                 stress_resultant += geometry.Vector.from_vector_3d(
                     normal * (sigma * area)
                 )

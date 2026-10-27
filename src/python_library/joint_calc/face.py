@@ -29,6 +29,7 @@ class JointSubFace:
     area: float = None
     centroid: geometry.Point = None
     effective_depth: float = None
+    stresses_and_locations: list[tuple[geometry.Vector, geometry.Point]] = None
 
     def __post_init__(self):
         self.area = utils.compute_area(self.rh_joint_brep_face)
@@ -52,6 +53,7 @@ class JointFace:
     location_of_max_stress: geometry.Point = None
     bending_subface: JointSubFace = None
     axial_subface: JointSubFace = None
+    projected_rotation_axis: Rhino.Geometry.Line = None
 
     def __post_init__(self):
         self.area = utils.compute_area(self.rh_joint_brep_face)
