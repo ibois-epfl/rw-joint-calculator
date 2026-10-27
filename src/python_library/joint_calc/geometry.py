@@ -71,6 +71,10 @@ class Point:
     def to_point_3d(self):
         return Rhino.Geometry.Point3d(self.x, self.y, self.z)
 
+    @staticmethod
+    def from_Point3d(point_3d: Rhino.Geometry.Point3d):
+        return Point(point_3d.X, point_3d.Y, point_3d.Z)
+
     def __sub__(self, other: "Point"):
         if isinstance(other, Point):
             return Vector(self.x - other.x, self.y - other.y, self.z - other.z)

@@ -3,7 +3,7 @@ This repo contains (highly) experimental code to calculate the forces in a round
 
 
 <center>
-<img src="./assets/2025_08_22_joinery_detail_and_stresses.png" width="75%">
+<img src="./assets/2026_09_13_roundwood_joint_external_forces_drawing.png" width="75%">
 
 
 > [!WARNING]
